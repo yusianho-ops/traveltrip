@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v24 (Final Fix)</title>
+    <title>Trip Planner v25 (Full Fix)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,16 +18,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
-    <!-- Firebase SDK Setup -->
+    <!-- Firebase SDK (保持 v11.0.2 穩定版) -->
     <script type="module">
-        // 1. 引入核心 App
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        // 2. 引入 Auth (認證) - 登入功能必需
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-        // 3. 引入 Firestore (資料庫) - 存取行程必需
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-        // 您的設定檔
         const firebaseConfig = {
             apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
             authDomain: "travel-8eaef.firebaseapp.com",
@@ -39,12 +35,10 @@
         };
 
         try {
-            // 初始化
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
             
-            // 將功能掛載到 window 讓 Vue 使用
             window.fb = { 
                 auth, db, 
                 signInAnonymously, signOut, onAuthStateChanged, 
@@ -52,12 +46,10 @@
             };
             
             console.log("Firebase SDK 載入成功");
-            // 發送事件通知 Vue
             window.dispatchEvent(new Event('firebase-ready'));
 
         } catch (e) {
             console.error("Firebase Init Error:", e);
-            // 手機版除錯關鍵：顯示 Alert
             alert("Firebase 初始化失敗:\n" + e.message);
         }
     </script>
@@ -113,9 +105,6 @@
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
                 {{ loginBtnText }}
             </button>
-            
-            <p class="mt-4 text-xs opacity-50 text-text-main">Status: {{ firebaseStatus }}</p>
-            <!-- 錯誤訊息顯示區 -->
             <p v-if="errorMessage" class="mt-2 text-xs text-red-600 font-bold bg-white/50 p-2 rounded border border-red-500">{{ errorMessage }}</p>
         </div>
 
@@ -129,7 +118,7 @@
             <!-- VIEW: HOME -->
             <div v-if="currentView === 'home'" class="p-5 flex flex-col h-full">
                 <header class="flex justify-between items-center mb-6 pt-2">
-                    <div><h1 class="text-3xl font-black tracking-tighter uppercase text-text-main">MY TRIPS</h1><div class="h-2 w-16 bg-border mt-1"></div></div>
+                    <div><h1 class="text-3xl font-black tracking-tighter uppercase text-text-main">{{ t('trips') }}</h1><div class="h-2 w-16 bg-border mt-1"></div></div>
                     <div class="flex gap-2">
                         <button @click="logout" class="w-10 h-10 bg-red-100 border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center text-red-500 active:translate-y-1"><i class="fa-solid fa-power-off"></i></button>
                         <button @click="showSettings=true" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center text-border active:translate-y-1"><i class="fa-solid fa-gear"></i></button>
@@ -137,13 +126,13 @@
                 </header>
 
                 <div class="mb-4 flex gap-2">
-                    <input v-model="joinTripId" placeholder="Paste Trip ID to Join" class="text-xs p-3 dark-input">
+                    <input v-model="joinTripId" :placeholder="t('enterId')" class="text-xs p-3 dark-input">
                     <button @click="joinTrip" class="bg-secondary text-white font-bold px-4 rounded border-2 border-border shadow-hard-sm">JOIN</button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto space-y-6 pb-24 scrollbar-hide">
-                    <div v-if="loading" class="text-center mt-10 font-bold animate-pulse text-text-main">Loading Trips...</div>
-                    <div v-else-if="trips.length === 0" class="text-center opacity-50 mt-10 font-bold text-text-main">No trips found.</div>
+                    <div v-if="loading" class="text-center mt-10 font-bold animate-pulse text-text-main">Loading...</div>
+                    <div v-else-if="trips.length === 0" class="text-center opacity-50 mt-10 font-bold text-text-main">{{ t('noTrips') }}</div>
                     
                     <div v-for="(trip, index) in trips" :key="trip.id" @click="openTrip(trip)" class="bg-card-bg border-2 border-border shadow-hard rounded-xl overflow-hidden cursor-pointer active:translate-y-1 relative group">
                         <div class="absolute top-2 right-2 z-10 bg-white/80 px-2 py-1 rounded text-[10px] font-bold border border-border text-black">ID: {{ trip.id }}</div>
@@ -190,7 +179,7 @@
                 <div class="bg-main-bg border-b-2 border-border pt-4 pb-2 sticky top-0 z-30 shadow-lg">
                     <div class="flex justify-between px-4 mb-2 items-center">
                         <button @click="currentView = 'dashboard'" class="text-sm font-black underline text-text-main">< {{ t('back') }}</button>
-                        <button @click="showDayReorderModal=true" class="text-xs font-bold bg-card-bg border border-border px-2 py-1 rounded shadow-sm text-text-main"><i class="fa-solid fa-sort"></i> Sort Days</button>
+                        <button @click="showDayReorderModal=true" class="text-xs font-bold bg-card-bg border border-border px-2 py-1 rounded shadow-sm text-text-main"><i class="fa-solid fa-sort"></i></button>
                     </div>
                     <div class="flex overflow-x-auto w-full px-4 gap-3 scrollbar-hide pb-2 whitespace-nowrap">
                         <button v-for="(date, idx) in tripDates" :key="idx" @click="selectedDate = date" :class="selectedDate === date ? 'bg-accent text-white shadow-hard scale-105' : 'bg-card-bg text-border shadow-hard-sm'" class="flex-shrink-0 w-16 h-16 border-2 border-border rounded-lg flex flex-col items-center justify-center transition-all"><span class="text-[10px] font-bold">DAY {{ idx + 1 }}</span><span class="text-xl font-black">{{ date.split('/')[2] }}</span></button>
@@ -211,12 +200,12 @@
                                     <div v-if="item.showNote" class="mt-2 border-t border-dashed border-gray-300 pt-2 ml-8">
                                         <div v-if="!item.isEditingNote" class="space-y-2">
                                             <div v-if="item.note || item.imageUrl" class="text-sm bg-main-bg p-2 rounded border border-border"><p v-if="item.note" class="note-content text-text-main">{{ item.note }}</p><img v-if="item.imageUrl" :src="item.imageUrl" class="w-full rounded mt-2"></div>
-                                            <button @click.stop="item.isEditingNote = true" class="w-full py-1 text-xs font-bold text-accent border border-accent rounded">Edit / Add Photo</button>
+                                            <button @click.stop="item.isEditingNote = true" class="w-full py-1 text-xs font-bold text-accent border border-accent rounded">{{ t('edit') }}</button>
                                         </div>
                                         <div v-else class="mt-2">
-                                            <textarea v-model="item.note" placeholder="Note..." class="w-full text-sm p-2 bg-main-bg border border-border rounded mb-2 h-24"></textarea>
+                                            <textarea v-model="item.note" :placeholder="t('note')" class="w-full text-sm p-2 bg-main-bg border border-border rounded mb-2 h-24"></textarea>
                                             <div class="relative w-full h-32 bg-gray-100 border border-border rounded flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 mb-2"><input type="file" accept="image/*" @change="(e)=>handleItemImage(e, item)" class="absolute inset-0 opacity-0 cursor-pointer"><img v-if="item.imageUrl" :src="item.imageUrl" class="w-full h-full object-cover"><div v-else class="text-xs text-gray-400 flex flex-col items-center"><i class="fa-solid fa-cloud-arrow-up mb-1"></i> Upload</div></div>
-                                            <button @click.stop="item.isEditingNote = false; syncUpdate()" class="w-full bg-accent text-white py-1 rounded font-bold text-xs">Confirm</button>
+                                            <button @click.stop="item.isEditingNote = false; syncUpdate()" class="w-full bg-accent text-white py-1 rounded font-bold text-xs">{{ t('confirm') }}</button>
                                         </div>
                                     </div>
                                     <button @click.stop="openMap(item.text)" class="w-full py-2 bg-secondary border-t-2 border-border text-xs font-black hover:bg-accent hover:text-white transition-colors flex items-center justify-center gap-1 rounded-b-lg -mb-3 -mx-3 w-[calc(100%+1.5rem)] mt-2 relative z-20 text-border"><i class="fa-solid fa-location-arrow"></i> {{ t('navigate') }}</button>
@@ -226,8 +215,8 @@
                     </div>
                 </div>
                 <div class="fixed bottom-0 left-0 right-0 bg-main-bg border-t-2 border-border p-3 max-w-md mx-auto z-50">
-                    <div class="grid grid-cols-2 gap-2 mb-2"><input v-model="newItem.time" type="time" class="text-center font-black dark-input"><select v-model="newItem.category" class="text-xs font-bold text-center dark-input"><option value="sightseeing">📸 Sightseeing</option><option value="food">🍴 Food</option><option value="shopping">🛍️ Shopping</option></select></div>
-                    <div class="flex gap-2"><input v-model="newItem.text" type="text" placeholder="New Item..." class="flex-1 p-3 text-sm dark-input"><button @click="saveItem" class="bg-border text-white w-14 rounded border-2 border-black shadow-hard-sm text-xl">+</button></div>
+                    <div class="grid grid-cols-2 gap-2 mb-2"><input v-model="newItem.time" type="time" class="text-center font-black dark-input"><select v-model="newItem.category" class="text-xs font-bold text-center dark-input"><option value="sightseeing">{{ t('sightseeing') }}</option><option value="food">{{ t('food') }}</option><option value="shopping">{{ t('shopping') }}</option></select></div>
+                    <div class="flex gap-2"><input v-model="newItem.text" type="text" :placeholder="t('enterItem')" class="flex-1 p-3 text-sm dark-input"><button @click="saveItem" class="bg-border text-white w-14 rounded border-2 border-black shadow-hard-sm text-xl">+</button></div>
                 </div>
             </div>
 
@@ -235,11 +224,26 @@
             <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg text-text-main">< BACK</button><h2 class="font-black text-xl text-text-main">{{ t('budget') }}</h2><button @click="showCalculator = true" class="w-10 h-10 bg-accent text-white border-2 border-border shadow-hard-sm rounded-lg">+</button></div><div class="p-4 overflow-y-auto pb-24 space-y-4"><div class="bg-border text-white p-4 rounded-xl shadow-hard border-2 border-border text-center"><p class="text-xs font-bold opacity-80">{{ t('totalExpense') }}</p><p class="text-4xl font-black mt-1">NT$ {{ totalExpense }}</p></div><div class="bg-card-bg border-2 border-border rounded-xl p-3"><h3 class="font-black text-sm mb-2 text-text-main">{{ t('members') }}</h3><div class="flex gap-2 mb-2"><input v-model="newMemberName" placeholder="Name" class="flex-1 p-2 border-2 border-border rounded dark-input"><button @click="addMember" class="bg-border text-white px-4 rounded font-bold">+</button></div><div class="flex flex-wrap gap-2"><span v-for="(m, i) in (currentTrip.members || ['Me'])" :key="i" class="px-2 py-1 bg-secondary text-white rounded border border-border text-sm font-bold flex items-center gap-2">{{ m }} <button @click="removeMember(i)" v-if="m !== 'Me'" class="text-red-700">x</button></span></div></div><div class="space-y-2"><h3 class="font-black text-sm text-text-main">{{ t('history') }}</h3><div v-for="(exp, i) in (currentTrip.expenses || []).slice().reverse()" :key="i" class="bg-card-bg p-3 rounded-xl border border-border flex justify-between items-center shadow-sm"><div><span class="font-bold block text-text-main">{{ exp.note }}</span><span class="text-xs text-gray-500">{{ exp.payer }} {{ t('paidFor') }} {{ (exp.splitters||[]).join(', ') }}</span></div><div class="text-right"><span class="font-black block text-text-main">NT$ {{ exp.twd }}</span><button @click="deleteExpense(i)" class="text-red-400 text-xs underline">delete</button></div></div></div></div></div>
             
             <!-- VIEW: PACKING -->
-            <div v-if="currentView === 'packing_list'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg text-text-main">< BACK</button><h2 class="font-black text-xl text-text-main">{{ t('packing') }}</h2><div class="w-10"></div></div><div class="p-4 flex-1 overflow-y-auto pb-24"><div class="flex gap-2 mb-4"><input v-model="newTodo" placeholder="Add Item" class="flex-1 p-3 text-sm border-2 border-border rounded dark-input"><button @click="addTodo" class="w-12 bg-border text-white rounded font-bold text-xl shadow-hard-sm">+</button></div><div class="space-y-2"><div v-for="(todo, i) in (currentTrip.todos || [])" :key="i" class="flex items-center gap-3 p-3 bg-card-bg border-2 border-border rounded-xl shadow-sm"><input type="checkbox" v-model="todo.done" @change="syncUpdate" class="w-6 h-6 accent-accent border-2 border-border rounded"><span :class="{'opacity-30 line-through': todo.done}" class="font-bold flex-1 text-lg text-text-main">{{ todo.text }}</span><button @click="removeTodo(i)" class="text-red-500 w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-trash"></i></button></div></div></div></div>
+            <div v-if="currentView === 'packing_list'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg text-text-main">< BACK</button><h2 class="font-black text-xl text-text-main">{{ t('packing') }}</h2><div class="w-10"></div></div><div class="p-4 flex-1 overflow-y-auto pb-24"><div class="flex gap-2 mb-4"><input v-model="newTodo" :placeholder="t('addItem')" class="flex-1 p-3 text-sm border-2 border-border rounded dark-input"><button @click="addTodo" class="w-12 bg-border text-white rounded font-bold text-xl shadow-hard-sm">+</button></div><div class="space-y-2"><div v-for="(todo, i) in (currentTrip.todos || [])" :key="i" class="flex items-center gap-3 p-3 bg-card-bg border-2 border-border rounded-xl shadow-sm"><input type="checkbox" v-model="todo.done" @change="syncUpdate" class="w-6 h-6 accent-accent border-2 border-border rounded"><span :class="{'opacity-30 line-through': todo.done}" class="font-bold flex-1 text-lg text-text-main">{{ todo.text }}</span><button @click="removeTodo(i)" class="text-red-500 w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-trash"></i></button></div></div></div></div>
 
             <!-- Modals -->
-            <div v-if="isModalOpen" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-6"><div class="bg-main-bg w-full max-w-sm p-6 rounded-2xl border-2 border-border shadow-hard space-y-4"><h2 class="text-2xl font-black uppercase text-center text-text-main">NEW TRIP</h2><input v-model="form.destination" placeholder="Destination" class="w-full dark-input"><div class="flex gap-2"><input type="date" v-model="form.startDate" class="dark-input"><input type="date" v-model="form.endDate" class="dark-input"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-card-bg border-2 border-border rounded text-text-main">CANCEL</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white border-2 border-border rounded shadow-hard">CREATE</button></div></div></div>
-            <div v-if="showSettings" class="fixed inset-0 bg-main-bg z-50 p-6 flex flex-col"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-text-main">SETTINGS</h2><button @click="showSettings = false" class="font-bold text-xl text-text-main">X</button></div><div class="mb-6"><label class="block font-bold mb-2 text-text-main">THEME</label><div class="grid grid-cols-2 gap-3"><button v-for="(theme, key) in themes" :key="key" @click="applyTheme(key)" class="p-3 border-2 border-border rounded-lg text-xs font-bold flex items-center gap-2" :class="currentThemeKey === key ? 'bg-border text-white' : 'bg-card-bg text-text-main'"><div class="w-4 h-4 rounded-full border border-gray-400" :style="{backgroundColor: theme['--color-bg']}"></div>{{ theme.name }}</button></div></div></div>
+            <div v-if="isModalOpen" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-6"><div class="bg-main-bg w-full max-w-sm p-6 rounded-2xl border-2 border-border shadow-hard space-y-4"><h2 class="text-2xl font-black uppercase text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="w-full dark-input"><div class="flex gap-2"><input type="date" v-model="form.startDate" class="dark-input"><input type="date" v-model="form.endDate" class="dark-input"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-card-bg border-2 border-border rounded text-text-main">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white border-2 border-border rounded shadow-hard">CREATE</button></div></div></div>
+            
+            <!-- Settings Modal (Language Fix) -->
+            <div v-if="showSettings" class="fixed inset-0 bg-main-bg z-50 p-6 flex flex-col">
+                <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-text-main">{{ t('settings') }}</h2><button @click="showSettings = false" class="font-bold text-xl text-text-main">X</button></div>
+                
+                <div class="mb-6">
+                    <label class="block font-bold mb-2 text-text-main">{{ t('language') }}</label>
+                    <div class="flex gap-2">
+                        <button @click="currentLang='zh-TW'" class="flex-1 py-2 border-2 border-border rounded font-bold" :class="currentLang==='zh-TW'?'bg-border text-white':'bg-card-bg text-text-main'">中文</button>
+                        <button @click="currentLang='en'" class="flex-1 py-2 border-2 border-border rounded font-bold" :class="currentLang==='en'?'bg-border text-white':'bg-card-bg text-text-main'">English</button>
+                    </div>
+                </div>
+
+                <div class="mb-6"><label class="block font-bold mb-2 text-text-main">THEME</label><div class="grid grid-cols-2 gap-3"><button v-for="(theme, key) in themes" :key="key" @click="applyTheme(key)" class="p-3 border-2 border-border rounded-lg text-xs font-bold flex items-center gap-2" :class="currentThemeKey === key ? 'bg-border text-white' : 'bg-card-bg text-text-main'"><div class="w-4 h-4 rounded-full border border-gray-400" :style="{backgroundColor: theme['--color-bg']}"></div>{{ theme.name }}</button></div></div>
+            </div>
+
             <div v-if="showDayReorderModal" class="fixed inset-0 bg-border/90 z-[60] flex items-center justify-center p-4"><div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[80vh]"><div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('reorderDays') }}</h3><button @click="showDayReorderModal=false">X</button></div><div class="p-4 text-xs text-gray-500">Drag to reorder content.</div><div id="day-sortable-list" class="p-4 space-y-2 overflow-y-auto"><div v-for="(day, idx) in tempDayList" :key="day.id" :data-id="day.id" class="p-3 bg-main-bg border-2 border-border rounded font-bold cursor-grab active:cursor-grabbing text-text-main">Day {{ idx + 1 }} - (Content of Day {{ day.originalIdx + 1 }})</div></div><div class="p-4 border-t-2 border-border"><button @click="saveDayOrder" class="w-full bg-accent text-white py-3 font-bold rounded shadow-hard active:translate-y-1">CONFIRM REORDER</button></div></div></div>
             <div v-if="showFlightModal" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-4"><div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[80vh]"><div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('flights') }}</h3><button @click="showFlightModal=false">X</button></div><div class="p-4 space-y-2 overflow-y-auto"><div v-for="(f,i) in (currentTrip.flights||[])" :key="i" class="bg-main-bg p-2 border-2 border-border relative text-text-main flex justify-between items-center"><div><div class="font-bold">{{ f.airline }} {{ f.code }}</div><div>{{ formatDate(f.date) }} {{ f.time }}</div></div><div class="flex gap-2"><button @click="editFlight(f, i)" class="text-blue-500"><i class="fa-solid fa-pen"></i></button><button @click="removeFlight(i)" class="text-red-500"><i class="fa-solid fa-trash"></i></button></div></div><div class="pt-2 border-t-2 border-dashed border-border space-y-1 bg-secondary/10 p-2 rounded"><p class="text-xs font-bold text-accent mb-1">{{ editingFlightIndex > -1 ? 'EDIT FLIGHT' : 'NEW FLIGHT' }}</p><input v-model="newFlight.airline" placeholder="Airline" class="text-xs dark-input"><input v-model="newFlight.code" placeholder="Flight No" class="text-xs dark-input"><div class="flex gap-1"><input type="date" v-model="newFlight.date" class="text-xs dark-input"><input type="time" v-model="newFlight.time" class="text-xs dark-input"></div><input v-model="newFlight.loc" placeholder="Terminal" class="text-xs dark-input"><button @click="addFlight" class="w-full bg-border text-white font-bold text-xs py-2">{{ editingFlightIndex > -1 ? 'UPDATE' : 'ADD' }}</button></div></div></div></div>
             <div v-if="showHotelModal" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-4"><div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[80vh]"><div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('hotels') }}</h3><button @click="showHotelModal=false">X</button></div><div class="p-4 space-y-2 overflow-y-auto"><div v-for="(h,i) in (currentTrip.hotels||[])" :key="i" class="bg-main-bg p-2 border-2 border-border relative text-text-main flex justify-between items-center"><div><div class="font-bold">{{ h.name }}</div><div class="text-xs">{{ formatDate(h.checkIn) }}~{{ formatDate(h.checkOut) }}</div></div><div class="flex gap-2"><button @click="editHotel(h, i)" class="text-blue-500"><i class="fa-solid fa-pen"></i></button><button @click="removeHotel(i)" class="text-red-500"><i class="fa-solid fa-trash"></i></button></div></div><div class="pt-2 border-t-2 border-dashed border-border space-y-1 bg-secondary/10 p-2 rounded"><p class="text-xs font-bold text-accent mb-1">{{ editingHotelIndex > -1 ? 'EDIT HOTEL' : 'NEW HOTEL' }}</p><input v-model="newHotel.name" placeholder="Name" class="text-xs dark-input"><input v-model="newHotel.address" placeholder="Address" class="text-xs dark-input"><div class="grid grid-cols-2 gap-1"><input type="date" v-model="newHotel.checkIn" class="text-xs dark-input"><input type="date" v-model="newHotel.checkOut" class="text-xs dark-input"></div><button @click="addHotel" class="w-full bg-border text-white font-bold text-xs py-2">{{ editingHotelIndex > -1 ? 'UPDATE' : 'ADD' }}</button></div></div></div></div>
@@ -253,7 +257,8 @@
         const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
         const i18n = {
-            'zh-TW': { trips:'我的行程', newTrip:'新增行程', editTrip:'編輯行程', settings:'設定', language:'語言', members:'成員管理', save:'儲存', cancel:'取消', destination:'目的地', uploadCover:'上傳封面', weather:'當地天氣', itinerary:'每日行程', itineraryDesc:'導航 & 規劃', budget:'記帳', flights:'航班', hotels:'住宿', emptyItinerary:'點擊下方按鈕開始規劃', navigate:'導航', calculator:'記帳計算機', note:'備註', payer:'先付者', splitWith:'分攤給', sightseeing:'景點', food:'吃飯', shopping:'購物', accommodation:'住宿', enterItem:'輸入行程...', debtSettlement:'債務結算', noDebt:'目前無欠款', owes:'欠', history:'歷史紀錄', paidFor:'幫付', totalExpense:'總支出', packing:'行前清單', addItem:'新增物品', enterNote:'輸入備註...', uploadPhoto:'上傳照片', viewNote:'備註/照片', confirm:'確認', reorderDays:'排序天數', back:'返回', edit:'編輯', addNote:'新增備註' },
+            'zh-TW': { trips:'我的行程', newTrip:'新增行程', editTrip:'編輯行程', settings:'設定', language:'語言', members:'成員管理', save:'儲存', cancel:'取消', destination:'目的地', uploadCover:'上傳封面', weather:'當地天氣', itinerary:'每日行程', itineraryDesc:'導航 & 規劃', budget:'記帳', flights:'航班', hotels:'住宿', emptyItinerary:'點擊下方按鈕開始規劃', navigate:'導航', calculator:'記帳計算機', note:'備註', payer:'先付者', splitWith:'分攤給', sightseeing:'景點', food:'吃飯', shopping:'購物', accommodation:'住宿', enterItem:'輸入行程...', debtSettlement:'債務結算', noDebt:'目前無欠款', owes:'欠', history:'歷史紀錄', paidFor:'幫付', totalExpense:'總支出', packing:'行前清單', addItem:'新增物品', enterNote:'輸入備註...', uploadPhoto:'上傳照片', viewNote:'備註/照片', confirm:'確認', reorderDays:'排序天數', back:'返回', edit:'編輯', addNote:'新增備註', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程' },
+            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', editTrip:'Edit Trip', settings:'SETTINGS', language:'Language', members:'Members', save:'SAVE', cancel:'CANCEL', destination:'Destination', uploadCover:'Upload Cover', weather:'WEATHER', itinerary:'ITINERARY', itineraryDesc:'Navigation & Plan', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', emptyItinerary:'Tap + to add items', navigate:'NAVIGATE', calculator:'Calculator', note:'Note', payer:'Payer', splitWith:'Split With', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', accommodation:'Hotel', enterItem:'Enter item...', debtSettlement:'Settlement', noDebt:'No debts', owes:'owes', history:'History', paidFor:'paid for', totalExpense:'Total', packing:'PACKING', addItem:'Add Item', enterNote:'Enter note...', uploadPhoto:'Upload Photo', viewNote:'View Note', confirm:'Confirm', reorderDays:'Reorder Days', back:'Back', edit:'Edit', addNote:'Add Note', enterId:'Enter Trip ID to join', noTrips:'No trips found.' }
         };
 
         const themes = {
@@ -279,8 +284,8 @@
                 const currentThemeKey = ref('dune');
                 const selectedDate = ref('');
                 const joinTripId = ref('');
-                const firebaseStatus = ref('connecting'); // connecting, ready, error
-                const errorMessage = ref(''); // 儲存具體錯誤訊息
+                const firebaseStatus = ref('connecting');
+                const errorMessage = ref('');
                 const loginBtnText = computed(() => {
                     if (firebaseStatus.value === 'connecting') return 'Connecting...';
                     if (firebaseStatus.value === 'error') return 'Connection Failed';
@@ -295,7 +300,7 @@
                 const isEditMode = ref(false); const editTripIndex = ref(-1); const editingIndex = ref(-1); const editingFlightIndex = ref(-1); const editingHotelIndex = ref(-1);
                 const newFlight = ref({ airline: '', code:'', date:'', time:'', loc:'' }); const newHotel = ref({ name:'', address:'', checkIn:'', checkOut:'' }); const newMemberName = ref('');
                 const calcCurrency = ref('JPY'); const calcInput = ref(''); const expenseNote = ref(''); const expensePayer = ref('Me'); const expenseSplitters = ref(['Me']); const rates = { JPY: 0.22, KRW: 0.024, USD: 32.1, EUR: 34.5, THB: 0.9 };
-                const currentLang = ref('zh-TW'); const t = (key) => i18n['zh-TW'][key] || key;
+                const currentLang = ref('zh-TW'); const t = (key) => i18n[currentLang.value][key] || key;
                 const weatherData = ref({temp: 25});
                 const tempDayList = ref([]);
                 let unsubscribeTrips = null;
@@ -328,20 +333,10 @@
                     document.getElementById('app-loading').classList.add('hidden-load');
                 });
 
-                // LOGIN LOGIC (Enhanced Error Handling)
                 const login = async () => {
                     errorMessage.value = '';
-                    if (firebaseStatus.value !== 'ready') { 
-                        alert("SDK 尚未載入完成，請稍候再試。"); 
-                        return; 
-                    }
-                    try { 
-                        await window.fb.signInAnonymously(window.fb.auth); 
-                    } catch (e) { 
-                        console.error(e);
-                        errorMessage.value = `Login Error: ${e.code}`;
-                        alert(`登入失敗:\nCode: ${e.code}\nMsg: ${e.message}`);
-                    } 
+                    if (firebaseStatus.value !== 'ready') { alert("SDK 尚未載入完成，請稍候再試。"); return; }
+                    try { await window.fb.signInAnonymously(window.fb.auth); } catch (e) { errorMessage.value = `Login Error: ${e.code}`; alert(`登入失敗:\nCode: ${e.code}\nMsg: ${e.message}`); } 
                 };
                 const logout = () => window.fb.signOut(window.fb.auth);
 
@@ -353,24 +348,28 @@
                         unsubscribeTrips = window.fb.onSnapshot(q, (snapshot) => {
                             trips.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                             loading.value = false;
-                        }, (error) => {
-                            console.error("Load Trips Error:", error);
-                            alert("讀取行程失敗: " + error.message);
-                            loading.value = false;
-                        });
+                        }, (error) => { loading.value = false; });
+                    } catch(e) { loading.value = false; }
+                };
+
+                // 修復新增行程的關鍵函式
+                const openNewTripModal = () => {
+                    form.value = { destination: '', startDate: '', endDate: '', coverImage: null };
+                    isModalOpen.value = true;
+                };
+
+                const createCloudTrip = async () => {
+                    if (!user.value) return;
+                    if (!form.value.destination || !form.value.startDate || !form.value.endDate) { alert("Please fill all fields"); return; }
+                    try {
+                        const newTrip = { destination: form.value.destination, startDate: form.value.startDate, endDate: form.value.endDate, coverImage: form.value.coverImage, members: [user.value.uid], itinerary: {}, todos: [], expenses: [], flights: [], hotels: [], createdAt: Date.now() };
+                        await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), newTrip);
+                        isModalOpen.value = false;
                     } catch(e) {
-                         alert("資料庫查詢錯誤: " + e.message);
-                         loading.value = false;
+                        alert("Create Failed: " + e.message);
                     }
                 };
 
-                // ... (All CRUD, Logic, Image Upload)
-                const createCloudTrip = async () => {
-                    if (!user.value) return;
-                    const newTrip = { destination: form.value.destination, startDate: form.value.startDate, endDate: form.value.endDate, coverImage: form.value.coverImage, members: [user.value.uid], itinerary: {}, todos: [], expenses: [], flights: [], hotels: [], createdAt: Date.now() };
-                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), newTrip);
-                    isModalOpen.value = false;
-                };
                 const joinTrip = async () => {
                     if(!joinTripId.value) return;
                     try {
@@ -393,32 +392,20 @@
                     currentView.value = 'dashboard';
                 };
                 const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
-                
-                // 圖片壓縮函式 (修復截斷問題)
                 const compressAndConvertToBase64 = (file, callback) => {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         const img = new Image();
                         img.onload = () => {
-                            const canvas = document.createElement('canvas'); 
-                            const ctx = canvas.getContext('2d'); 
-                            const maxWidth = 600; 
-                            const scale = maxWidth / img.width; 
-                            canvas.width = maxWidth; 
-                            canvas.height = img.height * scale; 
-                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
-                            callback(canvas.toDataURL('image/jpeg', 0.6));
-                        }; 
-                        img.src = ev.target.result;
-                    }; 
-                    reader.readAsDataURL(file);
+                            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const maxWidth = 600; const scale = maxWidth / img.width; canvas.width = maxWidth; canvas.height = img.height * scale; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); callback(canvas.toDataURL('image/jpeg', 0.6));
+                        }; img.src = ev.target.result;
+                    }; reader.readAsDataURL(file);
                 };
-
                 const handleImageUpload = (e) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => form.value.coverImage = b64); };
                 const handleItemImage = (e, item) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => { item.imageUrl = b64; syncUpdate(); }); };
                 const applyTheme = (key) => { currentThemeKey.value = key; localStorage.setItem('app_theme', key); const theme = themes[key]; for (const [k, v] of Object.entries(theme)) { if (k.startsWith('--')) document.documentElement.style.setProperty(k, v); } };
                 const formatDate = (dateStr) => dateStr ? dateStr.replace(/-/g, '/') : '';
-                const getDays = (s,e) => Math.floor((new Date(e)-new Date(s))/86400000)+1;
+                const getDays = (s,e) => { const d1=new Date(s); const d2=new Date(e); return isNaN(d1)||isNaN(d2) ? 0 : Math.floor((d2-d1)/86400000)+1; };
                 const copyId = () => { navigator.clipboard.writeText(currentTrip.value.id); alert("ID Copied!"); };
                 const getCategoryEmoji = (cat) => ({ sightseeing:'📸', food:'🍴', shopping:'🛍️', hotel:'🏨' }[cat] || '📍');
                 const getCategoryText = (cat) => t(cat);
@@ -471,19 +458,23 @@
                         if(el && !daySortableInstance) daySortableInstance = new Sortable(el, { animation: 150, ghostClass: 'sortable-ghost' });
                     }
                 });
+                
+                const tripDates = computed(() => { 
+                     if(!currentTrip.value.startDate || !currentTrip.value.endDate) return [];
+                     const d = []; let c = new Date(currentTrip.value.startDate); const e = new Date(currentTrip.value.endDate);
+                     // 避免無效日期導致無限迴圈
+                     if(isNaN(c) || isNaN(e) || c > e) return [];
+                     while(c <= e) { d.push(formatDate(c.toISOString().split('T')[0])); c.setDate(c.getDate()+1); }
+                     return d;
+                });
 
                 return {
                     user, login, logout, trips, currentTrip, currentView, loading, isModalOpen, showSettings, showCalculator, showFlightModal, showHotelModal, showDayReorderModal,
                     form, newItem, newTodo, newFlight, newHotel, newMemberName,
                     editingIndex, editingFlightIndex, editingHotelIndex,
                     calcInput, expenseNote, calcCurrency, calculateTWD, expensePayer, expenseSplitters,
-                    joinTrip, joinTripId, createCloudTrip, deleteTrip, openTrip, handleImageUpload, handleItemImage,
-                    changeToItinerary, tripDates: computed(() => { 
-                         if(!currentTrip.value.startDate || !currentTrip.value.endDate) return [];
-                         const d = []; let c = new Date(currentTrip.value.startDate); const e = new Date(currentTrip.value.endDate);
-                         while(c <= e) { d.push(formatDate(c.toISOString().split('T')[0])); c.setDate(c.getDate()+1); }
-                         return d;
-                    }), 
+                    joinTrip, joinTripId, createCloudTrip, openNewTripModal, deleteTrip, openTrip, handleImageUpload, handleItemImage,
+                    changeToItinerary, tripDates,
                     getDayItems: () => (currentTrip.value.itinerary && currentTrip.value.itinerary[selectedDate.value]) || [], getDays, formatDate, copyId,
                     applyTheme, themes, currentThemeKey, t, currentLang,
                     saveItem, deleteItem, editItem, cancelEdit, enableNoteEdit, saveNote, toggleNote,
