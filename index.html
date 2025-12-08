@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v23</title>
+    <title>Trip Planner v24 (Final Fix)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,13 +18,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK Setup -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        // 1. 引入核心 App
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        // 2. 引入 Auth (認證) - 登入功能必需
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        // 3. 引入 Firestore (資料庫) - 存取行程必需
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-        // ✅ 您的專屬金鑰
+        // 您的設定檔
         const firebaseConfig = {
             apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
             authDomain: "travel-8eaef.firebaseapp.com",
@@ -36,24 +39,26 @@
         };
 
         try {
+            // 初始化
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
             
-            // 掛載到全域
+            // 將功能掛載到 window 讓 Vue 使用
             window.fb = { 
                 auth, db, 
                 signInAnonymously, signOut, onAuthStateChanged, 
                 collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc 
             };
             
-            console.log("Firebase 載入成功");
-            // 通知 Vue 系統已就緒
+            console.log("Firebase SDK 載入成功");
+            // 發送事件通知 Vue
             window.dispatchEvent(new Event('firebase-ready'));
 
         } catch (e) {
             console.error("Firebase Init Error:", e);
-            alert("Firebase 初始化失敗，請檢查網路連線");
+            // 手機版除錯關鍵：顯示 Alert
+            alert("Firebase 初始化失敗:\n" + e.message);
         }
     </script>
 
@@ -110,6 +115,8 @@
             </button>
             
             <p class="mt-4 text-xs opacity-50 text-text-main">Status: {{ firebaseStatus }}</p>
+            <!-- 錯誤訊息顯示區 -->
+            <p v-if="errorMessage" class="mt-2 text-xs text-red-600 font-bold bg-white/50 p-2 rounded border border-red-500">{{ errorMessage }}</p>
         </div>
 
         <!-- Main App -->
@@ -247,7 +254,6 @@
 
         const i18n = {
             'zh-TW': { trips:'我的行程', newTrip:'新增行程', editTrip:'編輯行程', settings:'設定', language:'語言', members:'成員管理', save:'儲存', cancel:'取消', destination:'目的地', uploadCover:'上傳封面', weather:'當地天氣', itinerary:'每日行程', itineraryDesc:'導航 & 規劃', budget:'記帳', flights:'航班', hotels:'住宿', emptyItinerary:'點擊下方按鈕開始規劃', navigate:'導航', calculator:'記帳計算機', note:'備註', payer:'先付者', splitWith:'分攤給', sightseeing:'景點', food:'吃飯', shopping:'購物', accommodation:'住宿', enterItem:'輸入行程...', debtSettlement:'債務結算', noDebt:'目前無欠款', owes:'欠', history:'歷史紀錄', paidFor:'幫付', totalExpense:'總支出', packing:'行前清單', addItem:'新增物品', enterNote:'輸入備註...', uploadPhoto:'上傳照片', viewNote:'備註/照片', confirm:'確認', reorderDays:'排序天數', back:'返回', edit:'編輯', addNote:'新增備註' },
-            // ... (other languages omitted for brevity but logic is same)
         };
 
         const themes = {
@@ -274,6 +280,7 @@
                 const selectedDate = ref('');
                 const joinTripId = ref('');
                 const firebaseStatus = ref('connecting'); // connecting, ready, error
+                const errorMessage = ref(''); // 儲存具體錯誤訊息
                 const loginBtnText = computed(() => {
                     if (firebaseStatus.value === 'connecting') return 'Connecting...';
                     if (firebaseStatus.value === 'error') return 'Connection Failed';
@@ -293,14 +300,12 @@
                 const tempDayList = ref([]);
                 let unsubscribeTrips = null;
                 let unsubscribeCurrentTrip = null;
-                let sortableInstance = null;
                 let daySortableInstance = null;
 
                 onMounted(async () => {
                     const savedTheme = localStorage.getItem('app_theme');
                     applyTheme(savedTheme || 'dune');
                     
-                    // Firebase Ready Listener
                     window.addEventListener('firebase-ready', () => {
                         firebaseStatus.value = 'ready';
                         if(window.fb && window.fb.auth) {
@@ -311,27 +316,31 @@
                         }
                     });
                     
-                    // Fallback if event missed
                     if(window.fb) firebaseStatus.value = 'ready';
                     
-                    // Timeout check
                     setTimeout(() => {
                         if(firebaseStatus.value === 'connecting') {
-                            console.warn("Firebase connection timeout.");
                             firebaseStatus.value = 'error';
+                            errorMessage.value = "網路連線逾時，請檢查網路狀況。";
                         }
-                    }, 5000);
+                    }, 8000);
 
                     document.getElementById('app-loading').classList.add('hidden-load');
                 });
 
-                // LOGIN LOGIC (Anonymous Only)
+                // LOGIN LOGIC (Enhanced Error Handling)
                 const login = async () => {
-                    if (firebaseStatus.value !== 'ready') { alert("系統連線中或是連線失敗，請檢查網路。"); return; }
+                    errorMessage.value = '';
+                    if (firebaseStatus.value !== 'ready') { 
+                        alert("SDK 尚未載入完成，請稍候再試。"); 
+                        return; 
+                    }
                     try { 
                         await window.fb.signInAnonymously(window.fb.auth); 
                     } catch (e) { 
-                        alert("登入錯誤: " + e.message); 
+                        console.error(e);
+                        errorMessage.value = `Login Error: ${e.code}`;
+                        alert(`登入失敗:\nCode: ${e.code}\nMsg: ${e.message}`);
                     } 
                 };
                 const logout = () => window.fb.signOut(window.fb.auth);
@@ -339,14 +348,23 @@
                 const loadTrips = () => {
                     loading.value = true;
                     if(unsubscribeTrips) unsubscribeTrips();
-                    const q = window.fb.query(window.fb.collection(window.fb.db, "trips"), window.fb.where("members", "array-contains", user.value.uid));
-                    unsubscribeTrips = window.fb.onSnapshot(q, (snapshot) => {
-                        trips.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        loading.value = false;
-                    });
+                    try {
+                        const q = window.fb.query(window.fb.collection(window.fb.db, "trips"), window.fb.where("members", "array-contains", user.value.uid));
+                        unsubscribeTrips = window.fb.onSnapshot(q, (snapshot) => {
+                            trips.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            loading.value = false;
+                        }, (error) => {
+                            console.error("Load Trips Error:", error);
+                            alert("讀取行程失敗: " + error.message);
+                            loading.value = false;
+                        });
+                    } catch(e) {
+                         alert("資料庫查詢錯誤: " + e.message);
+                         loading.value = false;
+                    }
                 };
 
-                // ... (All CRUD, Logic, Image Upload same as v22)
+                // ... (All CRUD, Logic, Image Upload)
                 const createCloudTrip = async () => {
                     if (!user.value) return;
                     const newTrip = { destination: form.value.destination, startDate: form.value.startDate, endDate: form.value.endDate, coverImage: form.value.coverImage, members: [user.value.uid], itinerary: {}, todos: [], expenses: [], flights: [], hotels: [], createdAt: Date.now() };
@@ -375,15 +393,27 @@
                     currentView.value = 'dashboard';
                 };
                 const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
+                
+                // 圖片壓縮函式 (修復截斷問題)
                 const compressAndConvertToBase64 = (file, callback) => {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         const img = new Image();
                         img.onload = () => {
-                            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const maxWidth = 600; const scale = maxWidth / img.width; canvas.width = maxWidth; canvas.height = img.height * scale; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); callback(canvas.toDataURL('image/jpeg', 0.6));
-                        }; img.src = ev.target.result;
-                    }; reader.readAsDataURL(file);
+                            const canvas = document.createElement('canvas'); 
+                            const ctx = canvas.getContext('2d'); 
+                            const maxWidth = 600; 
+                            const scale = maxWidth / img.width; 
+                            canvas.width = maxWidth; 
+                            canvas.height = img.height * scale; 
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
+                            callback(canvas.toDataURL('image/jpeg', 0.6));
+                        }; 
+                        img.src = ev.target.result;
+                    }; 
+                    reader.readAsDataURL(file);
                 };
+
                 const handleImageUpload = (e) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => form.value.coverImage = b64); };
                 const handleItemImage = (e, item) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => { item.imageUrl = b64; syncUpdate(); }); };
                 const applyTheme = (key) => { currentThemeKey.value = key; localStorage.setItem('app_theme', key); const theme = themes[key]; for (const [k, v] of Object.entries(theme)) { if (k.startsWith('--')) document.documentElement.style.setProperty(k, v); } };
@@ -448,13 +478,19 @@
                     editingIndex, editingFlightIndex, editingHotelIndex,
                     calcInput, expenseNote, calcCurrency, calculateTWD, expensePayer, expenseSplitters,
                     joinTrip, joinTripId, createCloudTrip, deleteTrip, openTrip, handleImageUpload, handleItemImage,
-                    changeToItinerary, tripDates, getDayItems: () => (currentTrip.value.itinerary && currentTrip.value.itinerary[selectedDate.value]) || [], getDays, formatDate, copyId,
+                    changeToItinerary, tripDates: computed(() => { 
+                         if(!currentTrip.value.startDate || !currentTrip.value.endDate) return [];
+                         const d = []; let c = new Date(currentTrip.value.startDate); const e = new Date(currentTrip.value.endDate);
+                         while(c <= e) { d.push(formatDate(c.toISOString().split('T')[0])); c.setDate(c.getDate()+1); }
+                         return d;
+                    }), 
+                    getDayItems: () => (currentTrip.value.itinerary && currentTrip.value.itinerary[selectedDate.value]) || [], getDays, formatDate, copyId,
                     applyTheme, themes, currentThemeKey, t, currentLang,
                     saveItem, deleteItem, editItem, cancelEdit, enableNoteEdit, saveNote, toggleNote,
                     addMember, removeMember, saveExpense, deleteExpense, handleCalc, totalExpense, debts,
-                    addFlight, editFlight, removeFlight, saveFlight, addHotel, editHotel, removeHotel, saveHotel,
+                    addFlight, editFlight, removeFlight, addHotel, editHotel, removeHotel,
                     addTodo, removeTodo, openTool, closeTools, openMap, getGoogleRouteUrl, saveDayOrder, updateCascadingTimes,
-                    tempDayList, isFirebaseReady: computed(() => firebaseStatus.value === 'ready'), firebaseStatus, loginBtnText
+                    tempDayList, isFirebaseReady: computed(() => firebaseStatus.value === 'ready'), firebaseStatus, loginBtnText, errorMessage
                 };
             }
         }).mount('#app');
