@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v25 (Full Fix)</title>
+    <title>Trip Planner v26 (Multi-Lang)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#F2C299">
 
     <!-- 樣式與圖示 -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- 核心函式庫 -->
@@ -18,7 +18,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
-    <!-- Firebase SDK (保持 v11.0.2 穩定版) -->
+    <!-- Firebase SDK (v11.0.2 Stable) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
@@ -71,7 +71,7 @@
 
     <style>
         :root { --color-bg: #F2C299; --color-card: #FFFFFF; --color-accent: #C56C39; --color-border: #201A17; --color-text: #201A17; --color-secondary: #E49C69; --color-input-bg: #FFFFFF; --color-input-text: #201A17; }
-        body { background-color: var(--color-bg); color: var(--color-text); font-family: 'Inter', 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior-y: none; }
+        body { background-color: var(--color-bg); color: var(--color-text); font-family: 'Inter', 'Noto Sans TC', 'Noto Sans JP', 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior-y: none; }
         .scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         input, select, textarea { background: var(--color-input-bg); color: var(--color-input-text); border: 2px solid var(--color-border); padding: 0.5rem; border-radius: 0.5rem; font-weight: 700; outline: none; box-shadow: 2px 2px 0px var(--color-border); transition: all 0.1s; width: 100%; font-size: 16px !important; }
         input:focus, textarea:focus { transform: translate(1px, 1px); box-shadow: 1px 1px 0px var(--color-border); }
@@ -229,15 +229,17 @@
             <!-- Modals -->
             <div v-if="isModalOpen" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-6"><div class="bg-main-bg w-full max-w-sm p-6 rounded-2xl border-2 border-border shadow-hard space-y-4"><h2 class="text-2xl font-black uppercase text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="w-full dark-input"><div class="flex gap-2"><input type="date" v-model="form.startDate" class="dark-input"><input type="date" v-model="form.endDate" class="dark-input"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-card-bg border-2 border-border rounded text-text-main">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white border-2 border-border rounded shadow-hard">CREATE</button></div></div></div>
             
-            <!-- Settings Modal (Language Fix) -->
+            <!-- Settings Modal (Multi-Language) -->
             <div v-if="showSettings" class="fixed inset-0 bg-main-bg z-50 p-6 flex flex-col">
                 <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-text-main">{{ t('settings') }}</h2><button @click="showSettings = false" class="font-bold text-xl text-text-main">X</button></div>
                 
                 <div class="mb-6">
                     <label class="block font-bold mb-2 text-text-main">{{ t('language') }}</label>
-                    <div class="flex gap-2">
-                        <button @click="currentLang='zh-TW'" class="flex-1 py-2 border-2 border-border rounded font-bold" :class="currentLang==='zh-TW'?'bg-border text-white':'bg-card-bg text-text-main'">中文</button>
-                        <button @click="currentLang='en'" class="flex-1 py-2 border-2 border-border rounded font-bold" :class="currentLang==='en'?'bg-border text-white':'bg-card-bg text-text-main'">English</button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button @click="currentLang='zh-TW'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='zh-TW'?'bg-border text-white':'bg-card-bg text-text-main'">繁體中文</button>
+                        <button @click="currentLang='en'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='en'?'bg-border text-white':'bg-card-bg text-text-main'">English</button>
+                        <button @click="currentLang='ja'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='ja'?'bg-border text-white':'bg-card-bg text-text-main'">日本語</button>
+                        <button @click="currentLang='ko'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='ko'?'bg-border text-white':'bg-card-bg text-text-main'">한국어</button>
                     </div>
                 </div>
 
@@ -258,7 +260,9 @@
 
         const i18n = {
             'zh-TW': { trips:'我的行程', newTrip:'新增行程', editTrip:'編輯行程', settings:'設定', language:'語言', members:'成員管理', save:'儲存', cancel:'取消', destination:'目的地', uploadCover:'上傳封面', weather:'當地天氣', itinerary:'每日行程', itineraryDesc:'導航 & 規劃', budget:'記帳', flights:'航班', hotels:'住宿', emptyItinerary:'點擊下方按鈕開始規劃', navigate:'導航', calculator:'記帳計算機', note:'備註', payer:'先付者', splitWith:'分攤給', sightseeing:'景點', food:'吃飯', shopping:'購物', accommodation:'住宿', enterItem:'輸入行程...', debtSettlement:'債務結算', noDebt:'目前無欠款', owes:'欠', history:'歷史紀錄', paidFor:'幫付', totalExpense:'總支出', packing:'行前清單', addItem:'新增物品', enterNote:'輸入備註...', uploadPhoto:'上傳照片', viewNote:'備註/照片', confirm:'確認', reorderDays:'排序天數', back:'返回', edit:'編輯', addNote:'新增備註', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程' },
-            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', editTrip:'Edit Trip', settings:'SETTINGS', language:'Language', members:'Members', save:'SAVE', cancel:'CANCEL', destination:'Destination', uploadCover:'Upload Cover', weather:'WEATHER', itinerary:'ITINERARY', itineraryDesc:'Navigation & Plan', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', emptyItinerary:'Tap + to add items', navigate:'NAVIGATE', calculator:'Calculator', note:'Note', payer:'Payer', splitWith:'Split With', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', accommodation:'Hotel', enterItem:'Enter item...', debtSettlement:'Settlement', noDebt:'No debts', owes:'owes', history:'History', paidFor:'paid for', totalExpense:'Total', packing:'PACKING', addItem:'Add Item', enterNote:'Enter note...', uploadPhoto:'Upload Photo', viewNote:'View Note', confirm:'Confirm', reorderDays:'Reorder Days', back:'Back', edit:'Edit', addNote:'Add Note', enterId:'Enter Trip ID to join', noTrips:'No trips found.' }
+            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', editTrip:'Edit Trip', settings:'SETTINGS', language:'Language', members:'Members', save:'SAVE', cancel:'CANCEL', destination:'Destination', uploadCover:'Upload Cover', weather:'WEATHER', itinerary:'ITINERARY', itineraryDesc:'Navigation & Plan', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', emptyItinerary:'Tap + to add items', navigate:'NAVIGATE', calculator:'Calculator', note:'Note', payer:'Payer', splitWith:'Split With', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', accommodation:'Hotel', enterItem:'Enter item...', debtSettlement:'Settlement', noDebt:'No debts', owes:'owes', history:'History', paidFor:'paid for', totalExpense:'Total', packing:'PACKING', addItem:'Add Item', enterNote:'Enter note...', uploadPhoto:'Upload Photo', viewNote:'View Note', confirm:'Confirm', reorderDays:'Reorder Days', back:'Back', edit:'Edit', addNote:'Add Note', enterId:'Enter Trip ID to join', noTrips:'No trips found.' },
+            'ja': { trips:'旅行一覧', newTrip:'新しい旅', editTrip:'編集', settings:'設定', language:'言語', members:'メンバー', save:'保存', cancel:'キャンセル', destination:'目的地', uploadCover:'画像アップロード', weather:'天気', itinerary:'旅程表', itineraryDesc:'ナビ＆計画', budget:'予算管理', flights:'フライト', hotels:'宿泊', emptyItinerary:'+ボタンで追加', navigate:'ナビ', calculator:'計算機', note:'メモ', payer:'支払者', splitWith:'割り勘', sightseeing:'観光', food:'食事', shopping:'買い物', accommodation:'宿泊', enterItem:'項目を入力...', debtSettlement:'精算', noDebt:'貸し借りなし', owes:'借', history:'履歴', paidFor:'代行', totalExpense:'合計支出', packing:'持ち物リスト', addItem:'アイテム追加', enterNote:'メモを入力...', uploadPhoto:'写真追加', viewNote:'メモ/写真', confirm:'確認', reorderDays:'日付並べ替え', back:'戻る', edit:'編集', addNote:'メモ追加', enterId:'IDを入力して参加', noTrips:'旅行が見つかりません' },
+            'ko': { trips:'나의 여행', newTrip:'새 여행', editTrip:'여행 편집', settings:'설정', language:'언어', members:'멤버', save:'저장', cancel:'취소', destination:'목적지', uploadCover:'커버 업로드', weather:'날씨', itinerary:'일정', itineraryDesc:'네비게이션 & 계획', budget:'예산/지출', flights:'항공편', hotels:'숙소', emptyItinerary:'+ 버튼을 눌러 추가', navigate:'길찾기', calculator:'계산기', note:'메모', payer:'결제자', splitWith:'함께 결제', sightseeing:'관광', food:'식사', shopping:'쇼핑', accommodation:'숙소', enterItem:'항목 입력...', debtSettlement:'정산', noDebt:'정산 완료', owes:'빚', history:'기록', paidFor:'대신 결제', totalExpense:'총 지출', packing:'준비물', addItem:'아이템 추가', enterNote:'메모 입력...', uploadPhoto:'사진 업로드', viewNote:'메모/사진', confirm:'확인', reorderDays:'날짜 순서 변경', back:'뒤로', edit:'편집', addNote:'메모 추가', enterId:'ID 입력하여 참가', noTrips:'여행이 없습니다' }
         };
 
         const themes = {
@@ -352,7 +356,6 @@
                     } catch(e) { loading.value = false; }
                 };
 
-                // 修復新增行程的關鍵函式
                 const openNewTripModal = () => {
                     form.value = { destination: '', startDate: '', endDate: '', coverImage: null };
                     isModalOpen.value = true;
@@ -462,7 +465,6 @@
                 const tripDates = computed(() => { 
                      if(!currentTrip.value.startDate || !currentTrip.value.endDate) return [];
                      const d = []; let c = new Date(currentTrip.value.startDate); const e = new Date(currentTrip.value.endDate);
-                     // 避免無效日期導致無限迴圈
                      if(isNaN(c) || isNaN(e) || c > e) return [];
                      while(c <= e) { d.push(formatDate(c.toISOString().split('T')[0])); c.setDate(c.getDate()+1); }
                      return d;
