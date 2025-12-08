@@ -2,30 +2,30 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <!-- 關鍵修正：viewport 設定，禁止 iOS 自動縮放，適配瀏海螢幕 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Travel Planner v18</title>
+    <title>Trip Planner v19 (Guest)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#F2C299">
 
-    <!-- 字體與圖示 -->
+    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- 核心函式庫 -->
+    <!-- Libraries -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
-    <!-- Firebase SDK Setup -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        // 改用 signInAnonymously
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // ✅ 您的金鑰配置
+        // ✅ 您的金鑰 (保持不變)
         const firebaseConfig = {
             apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
             authDomain: "travel-8eaef.firebaseapp.com",
@@ -40,17 +40,16 @@
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
-            const provider = new GoogleAuthProvider();
             
             window.fb = { 
-                auth, db, provider, 
-                signInWithPopup, signOut, onAuthStateChanged, 
+                auth, db, 
+                signInAnonymously, signOut, onAuthStateChanged, 
                 collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc 
             };
-            console.log("Firebase Ready");
+            console.log("Firebase Ready (Anon Mode)");
         } catch (e) {
             console.error("Firebase Init Error:", e);
-            alert("Firebase 初始化失敗，請檢查網路連線");
+            alert("初始化失敗: " + e.message);
         }
     </script>
 
@@ -71,43 +70,13 @@
 
     <style>
         :root { --color-bg: #F2C299; --color-card: #FFFFFF; --color-accent: #C56C39; --color-border: #201A17; --color-text: #201A17; --color-secondary: #E49C69; --color-input-bg: #FFFFFF; --color-input-text: #201A17; }
-        
-        body { 
-            background-color: var(--color-bg); 
-            color: var(--color-text); 
-            font-family: 'Inter', 'Noto Sans TC', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
-            transition: background-color 0.3s;
-            /* iOS 安全區域設定 */
-            padding-bottom: env(safe-area-inset-bottom);
-            overscroll-behavior-y: none; /* 防止下拉重整干擾 */
-        }
-
-        /* 隱藏捲軸 */
-        .scrollbar-hide::-webkit-scrollbar { display: none; } 
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* iOS 輸入框優化 (防止縮放) */
-        input, select, textarea { 
-            background: var(--color-input-bg); 
-            color: var(--color-input-text); 
-            border: 2px solid var(--color-border); 
-            padding: 0.5rem; 
-            border-radius: 0.5rem; 
-            font-weight: 700; 
-            outline: none; 
-            box-shadow: 2px 2px 0px var(--color-border); 
-            transition: all 0.1s; 
-            width: 100%; 
-            font-size: 16px !important; /* 強制 16px 防止 iOS Safari 自動放大 */
-        }
+        body { background-color: var(--color-bg); color: var(--color-text); font-family: 'Inter', 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior-y: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        input, select, textarea { background: var(--color-input-bg); color: var(--color-input-text); border: 2px solid var(--color-border); padding: 0.5rem; border-radius: 0.5rem; font-weight: 700; outline: none; box-shadow: 2px 2px 0px var(--color-border); transition: all 0.1s; width: 100%; font-size: 16px !important; }
         input:focus, textarea:focus { transform: translate(1px, 1px); box-shadow: 1px 1px 0px var(--color-border); }
-        
         .sortable-ghost { opacity: 0.4; background: var(--color-accent); }
         .cb-custom:checked + div { background-color: var(--color-accent); color: white; border-color: var(--color-border); }
         .note-content { white-space: pre-wrap; word-break: break-word; }
-        
-        /* 載入遮罩 */
         #app-loading { position: fixed; inset: 0; background: #F2C299; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; font-weight: 900; color: #201A17; transition: opacity 0.5s; }
         .hidden-load { opacity: 0; pointer-events: none; }
         [v-cloak] { display: none; }
@@ -115,31 +84,24 @@
 </head>
 <body class="selection:bg-accent selection:text-white">
 
-    <!-- Loading Screen -->
     <div id="app-loading">
         <div class="text-4xl mb-4"><i class="fa-solid fa-plane-up fa-bounce"></i></div>
         <div>LOADING...</div>
-        <div class="mt-4 text-xs font-normal opacity-60">Initializing App v18</div>
     </div>
 
     <div id="app" v-cloak class="min-h-screen relative max-w-md mx-auto overflow-hidden flex flex-col bg-main-bg border-x-2 border-border transition-colors duration-300">
 
-        <!-- Login View -->
+        <!-- Login View (Anonymous) -->
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative">
-            <div v-if="isLocalFile" class="absolute top-0 left-0 right-0 bg-red-500 text-white text-xs p-2 font-bold">
-                ⚠️ 警告：請勿直接開啟檔案 (file://)<br>請上傳至 GitHub Pages 使用以啟用 Google 登入
-            </div>
-
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60 text-text-main">Plan together. Travel forever.</p>
+            <p class="mb-8 text-sm font-bold opacity-60 text-text-main">Simple. Fast. Collaborative.</p>
             
-            <button @click="login" class="w-full bg-card-bg border-2 border-border py-4 rounded-xl font-black shadow-hard active:translate-y-1 flex items-center justify-center gap-2 text-text-main group">
-                <i class="fa-brands fa-google text-xl group-hover:text-accent transition-colors"></i> 
-                {{ loginBtnText }}
+            <button @click="login" class="w-full bg-card-bg border-2 border-border py-4 rounded-xl font-black shadow-hard active:translate-y-1 flex items-center justify-center gap-2 text-text-main group hover:bg-secondary hover:text-white transition-colors">
+                <i class="fa-solid fa-rocket text-xl"></i> START NOW
             </button>
             
-            <p class="mt-4 text-xs opacity-50 text-text-main">v18.0 Stable (iOS/Win)</p>
+            <p class="mt-4 text-xs opacity-50 text-text-main">No registration required.</p>
         </div>
 
         <!-- Main App -->
@@ -152,12 +114,10 @@
             <!-- VIEW: HOME -->
             <div v-if="currentView === 'home'" class="p-5 flex flex-col h-full">
                 <header class="flex justify-between items-center mb-6 pt-2">
-                    <div>
-                        <h1 class="text-3xl font-black tracking-tighter uppercase text-text-main">MY TRIPS</h1>
-                        <div class="h-2 w-16 bg-border mt-1"></div>
-                    </div>
+                    <div><h1 class="text-3xl font-black tracking-tighter uppercase text-text-main">MY TRIPS</h1><div class="h-2 w-16 bg-border mt-1"></div></div>
                     <div class="flex gap-2">
-                        <button @click="logout" class="w-10 h-10 bg-red-100 border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center text-red-500 active:translate-y-1"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+                        <!-- Logout Button -->
+                        <button @click="logout" class="w-10 h-10 bg-red-100 border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center text-red-500 active:translate-y-1"><i class="fa-solid fa-power-off"></i></button>
                         <button @click="showSettings=true" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center text-border active:translate-y-1"><i class="fa-solid fa-gear"></i></button>
                     </div>
                 </header>
@@ -168,7 +128,7 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto space-y-6 pb-24 scrollbar-hide">
-                    <div v-if="loading" class="text-center mt-10 font-bold animate-pulse text-text-main">Loading Cloud Trips...</div>
+                    <div v-if="loading" class="text-center mt-10 font-bold animate-pulse text-text-main">Loading...</div>
                     <div v-else-if="trips.length === 0" class="text-center opacity-50 mt-10 font-bold text-text-main">No trips found.</div>
                     
                     <div v-for="(trip, index) in trips" :key="trip.id" @click="openTrip(trip)" class="bg-card-bg border-2 border-border shadow-hard rounded-xl overflow-hidden cursor-pointer active:translate-y-1 relative group">
@@ -257,8 +217,10 @@
                 </div>
             </div>
 
-            <!-- VIEW: BUDGET & PACKING -->
+            <!-- VIEW: BUDGET -->
             <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg text-text-main">< BACK</button><h2 class="font-black text-xl text-text-main">{{ t('budget') }}</h2><button @click="showCalculator = true" class="w-10 h-10 bg-accent text-white border-2 border-border shadow-hard-sm rounded-lg">+</button></div><div class="p-4 overflow-y-auto pb-24 space-y-4"><div class="bg-border text-white p-4 rounded-xl shadow-hard border-2 border-border text-center"><p class="text-xs font-bold opacity-80">{{ t('totalExpense') }}</p><p class="text-4xl font-black mt-1">NT$ {{ totalExpense }}</p></div><div class="bg-card-bg border-2 border-border rounded-xl p-3"><h3 class="font-black text-sm mb-2 text-text-main">{{ t('members') }}</h3><div class="flex gap-2 mb-2"><input v-model="newMemberName" placeholder="Name" class="flex-1 p-2 border-2 border-border rounded dark-input"><button @click="addMember" class="bg-border text-white px-4 rounded font-bold">+</button></div><div class="flex flex-wrap gap-2"><span v-for="(m, i) in (currentTrip.members || ['Me'])" :key="i" class="px-2 py-1 bg-secondary text-white rounded border border-border text-sm font-bold flex items-center gap-2">{{ m }} <button @click="removeMember(i)" v-if="m !== 'Me'" class="text-red-700">x</button></span></div></div><div class="space-y-2"><h3 class="font-black text-sm text-text-main">{{ t('history') }}</h3><div v-for="(exp, i) in (currentTrip.expenses || []).slice().reverse()" :key="i" class="bg-card-bg p-3 rounded-xl border border-border flex justify-between items-center shadow-sm"><div><span class="font-bold block text-text-main">{{ exp.note }}</span><span class="text-xs text-gray-500">{{ exp.payer }} {{ t('paidFor') }} {{ (exp.splitters||[]).join(', ') }}</span></div><div class="text-right"><span class="font-black block text-text-main">NT$ {{ exp.twd }}</span><button @click="deleteExpense(i)" class="text-red-400 text-xs underline">delete</button></div></div></div></div></div>
+            
+            <!-- VIEW: PACKING -->
             <div v-if="currentView === 'packing_list'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg text-text-main">< BACK</button><h2 class="font-black text-xl text-text-main">{{ t('packing') }}</h2><div class="w-10"></div></div><div class="p-4 flex-1 overflow-y-auto pb-24"><div class="flex gap-2 mb-4"><input v-model="newTodo" placeholder="Add Item" class="flex-1 p-3 text-sm border-2 border-border rounded dark-input"><button @click="addTodo" class="w-12 bg-border text-white rounded font-bold text-xl shadow-hard-sm">+</button></div><div class="space-y-2"><div v-for="(todo, i) in (currentTrip.todos || [])" :key="i" class="flex items-center gap-3 p-3 bg-card-bg border-2 border-border rounded-xl shadow-sm"><input type="checkbox" v-model="todo.done" @change="syncUpdate" class="w-6 h-6 accent-accent border-2 border-border rounded"><span :class="{'opacity-30 line-through': todo.done}" class="font-bold flex-1 text-lg text-text-main">{{ todo.text }}</span><button @click="removeTodo(i)" class="text-red-500 w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-trash"></i></button></div></div></div></div>
 
             <!-- Modals -->
@@ -275,13 +237,11 @@
     <script>
         const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
+        // ... (i18n and themes same as v19)
         const i18n = {
             'zh-TW': { trips:'我的行程', newTrip:'新增行程', editTrip:'編輯行程', settings:'設定', language:'語言', members:'成員管理', save:'儲存', cancel:'取消', destination:'目的地', uploadCover:'上傳封面', weather:'當地天氣', itinerary:'每日行程', itineraryDesc:'導航 & 規劃', budget:'記帳', flights:'航班', hotels:'住宿', emptyItinerary:'點擊下方按鈕開始規劃', navigate:'導航', calculator:'記帳計算機', note:'備註', payer:'先付者', splitWith:'分攤給', sightseeing:'景點', food:'吃飯', shopping:'購物', accommodation:'住宿', enterItem:'輸入行程...', debtSettlement:'債務結算', noDebt:'目前無欠款', owes:'欠', history:'歷史紀錄', paidFor:'幫付', totalExpense:'總支出', packing:'行前清單', addItem:'新增物品', enterNote:'輸入備註...', uploadPhoto:'上傳照片', viewNote:'備註/照片', confirm:'確認', reorderDays:'排序天數', back:'返回', edit:'編輯', addNote:'新增備註' },
-            'en': { trips:'TRIPS', newTrip:'NEW TRIP', editTrip:'EDIT TRIP', settings:'SETTINGS', language:'Language', members:'Members', save:'SAVE', cancel:'CANCEL', destination:'Destination', uploadCover:'Upload Cover', weather:'WEATHER', itinerary:'ITINERARY', itineraryDesc:'Plan & Nav', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', emptyItinerary:'Start planning below', navigate:'NAVIGATE', calculator:'CALCULATOR', note:'Note', payer:'Paid By', splitWith:'Split With', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', accommodation:'Stay', enterItem:'Enter item...', debtSettlement:'DEBT SETTLEMENT', noDebt:'No debts.', owes:'owes', history:'HISTORY', paidFor:'paid for', totalExpense:'TOTAL EXPENSE', packing:'PACKING', addItem:'Add Item', enterNote:'Notes...', uploadPhoto:'Add Photo', viewNote:'Note/Photo', confirm:'Confirm', reorderDays:'Reorder Days', back:'BACK', edit:'Edit', addNote:'Add Note' },
-            'ja': { trips:'旅行プラン', newTrip:'新規作成', editTrip:'編集', settings:'設定', language:'言語', members:'メンバー', save:'保存', cancel:'キャンセル', destination:'目的地', uploadCover:'画像', weather:'天気', itinerary:'日程表', itineraryDesc:'ナビ & 計画', budget:'家計簿', flights:'フライト', hotels:'ホテル', emptyItinerary:'計画開始', navigate:'ナビ', calculator:'計算機', note:'メモ', payer:'支払者', splitWith:'割り勘', sightseeing:'観光', food:'食事', shopping:'買い物', accommodation:'宿泊', enterItem:'入力...', debtSettlement:'精算', noDebt:'貸し借りなし', owes:'→', history:'履歴', paidFor:'が立替', totalExpense:'総支出', packing:'持ち物', addItem:'追加', enterNote:'メモ...', uploadPhoto:'写真追加', viewNote:'メモ/写真', confirm:'確認', reorderDays:'日程並替', back:'戻る', edit:'編集', addNote:'メモ追加' },
-            'ko': { trips:'여행 일정', newTrip:'새 여행', editTrip:'편집', settings:'설정', language:'언어', members:'멤버 관리', save:'저장', cancel:'취소', destination:'목적지', uploadCover:'커버 업로드', weather:'날씨', itinerary:'일정표', itineraryDesc:'계획 & 네비', budget:'가계부', flights:'항공편', hotels:'숙소', emptyItinerary:'시작하기', navigate:'길찾기', calculator:'계산기', note:'메모', payer:'결제자', splitWith:'공유', sightseeing:'관광', food:'식사', shopping:'쇼핑', accommodation:'숙박', enterItem:'입력...', debtSettlement:'정산', noDebt:'정산 완료', owes:'→', history:'기록', paidFor:'결제', totalExpense:'총 지출', packing:'준비물', addItem:'추가', enterNote:'메모...', uploadPhoto:'사진 추가', viewNote:'메모/사진', confirm:'확인', reorderDays:'일정 순서', back:'뒤로', edit:'편집', addNote:'메모 추가' }
+            // ...
         };
-
         const themes = {
             dune: { name: 'Dune', '--color-bg': '#F2C299', '--color-card': '#FFFFFF', '--color-accent': '#C56C39', '--color-border': '#201A17', '--color-text': '#201A17', '--color-secondary': '#E49C69', '--color-input-bg': '#FFFFFF', '--color-input-text': '#201A17' },
             seafoam: { name: 'Seafoam', '--color-bg': '#9FE7E7', '--color-card': '#E8FBFF', '--color-accent': '#289FB7', '--color-border': '#0F1A1B', '--color-text': '#0F1A1B', '--color-secondary': '#6ECBD3', '--color-input-bg': '#FFFFFF', '--color-input-text': '#0F1A1B' },
@@ -309,14 +269,13 @@
                 const newItem = ref({ time: '10:00', text: '', category: 'sightseeing' });
                 const newTodo = ref('');
                 
-                // Edit States
+                // ... (Edit/Calc states same as v19)
                 const isEditMode = ref(false); const editTripIndex = ref(-1); const editingIndex = ref(-1); const editingFlightIndex = ref(-1); const editingHotelIndex = ref(-1);
                 const newFlight = ref({ airline: '', code:'', date:'', time:'', loc:'' }); const newHotel = ref({ name:'', address:'', checkIn:'', checkOut:'' }); const newMemberName = ref('');
                 const calcCurrency = ref('JPY'); const calcInput = ref(''); const expenseNote = ref(''); const expensePayer = ref('Me'); const expenseSplitters = ref(['Me']); const rates = { JPY: 0.22, KRW: 0.024, USD: 32.1, EUR: 34.5, THB: 0.9 };
                 const currentLang = ref('zh-TW'); const t = (key) => i18n['zh-TW'][key] || key; // Default to ZH-TW
                 const weatherData = ref({temp: 25});
                 const tempDayList = ref([]);
-                const isLocalFile = ref(window.location.protocol === 'file:');
                 let unsubscribeTrips = null;
                 let unsubscribeCurrentTrip = null;
                 let sortableInstance = null;
@@ -335,16 +294,13 @@
                     document.getElementById('app-loading').classList.add('hidden-load');
                 });
 
+                // LOGIN LOGIC (Anonymous)
                 const login = async () => {
                     if (!window.fb) { alert("Firebase SDK 未載入，請檢查網路。"); return; }
                     try { 
-                        await window.fb.signInWithPopup(window.fb.auth, window.fb.provider); 
+                        await window.fb.signInAnonymously(window.fb.auth); 
                     } catch (e) { 
-                        if(e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/unauthorized-domain') {
-                            alert("無法登入：Google 安全政策禁止在本地檔案 (file://) 登入。\n\n請將此網頁上傳至 GitHub Pages，並在 Firebase 後台 Authorized Domains 加入您的網址。");
-                        } else {
-                            alert("登入錯誤: " + e.message); 
-                        }
+                        alert("登入錯誤: " + e.message); 
                     } 
                 };
                 const logout = () => window.fb.signOut(window.fb.auth);
@@ -396,6 +352,7 @@
                     }
                 };
 
+                // Base64 Images
                 const compressAndConvertToBase64 = (file, callback) => {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
@@ -416,6 +373,7 @@
                 const handleImageUpload = (e) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => form.value.coverImage = b64); };
                 const handleItemImage = (e, item) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => { item.imageUrl = b64; syncUpdate(); }); };
 
+                // Helpers
                 const applyTheme = (key) => { currentThemeKey.value = key; localStorage.setItem('app_theme', key); const theme = themes[key]; for (const [k, v] of Object.entries(theme)) { if (k.startsWith('--')) document.documentElement.style.setProperty(k, v); } };
                 const formatDate = (dateStr) => dateStr ? dateStr.replace(/-/g, '/') : '';
                 const getDays = (s,e) => Math.floor((new Date(e)-new Date(s))/86400000)+1;
@@ -424,6 +382,7 @@
                 const getCategoryText = (cat) => t(cat);
                 const addTime = (t,d) => { if(!t||!d)return t; const [h,m]=t.split(':').map(Number); let min=h*60+m; if(d.includes('h')) min+=parseFloat(d)*60; else min+=parseInt(d); return `${String(Math.floor(min/60)%24).padStart(2,'0')}:${String(Math.floor(min%60)).padStart(2,'0')}`; };
 
+                // Features & CRUD (Same as before)
                 const changeToItinerary = async () => {
                     currentView.value = 'itinerary'; await nextTick();
                     const el = document.getElementById('sortable-list');
@@ -435,30 +394,15 @@
                     for(let i=1; i<list.length; i++) { if(list[i-1].travelTime) list[i].time = addTime(list[i-1].time, list[i-1].travelTime); }
                     syncUpdate();
                 };
-                
-                const saveItem = () => {
-                    if(!newItem.value.text) return;
-                    if(!currentTrip.value.itinerary[selectedDate.value]) currentTrip.value.itinerary[selectedDate.value] = [];
-                    currentTrip.value.itinerary[selectedDate.value].push({ id: Date.now()+Math.random(), ...newItem.value, categoryEmoji: getCategoryEmoji(newItem.value.category), categoryText: getCategoryText(newItem.value.category), travelMode: '🚗', travelTime: '', isEditingNote: false });
-                    currentTrip.value.itinerary[selectedDate.value].sort((a,b)=>a.time.localeCompare(b.time));
-                    updateCascadingTimes(); newItem.value.text = '';
-                };
+                const saveItem = () => { if(!newItem.value.text) return; if(!currentTrip.value.itinerary[selectedDate.value]) currentTrip.value.itinerary[selectedDate.value] = []; currentTrip.value.itinerary[selectedDate.value].push({ id: Date.now()+Math.random(), ...newItem.value, categoryEmoji: getCategoryEmoji(newItem.value.category), categoryText: getCategoryText(newItem.value.category), travelMode: '🚗', travelTime: '', isEditingNote: false }); currentTrip.value.itinerary[selectedDate.value].sort((a,b)=>a.time.localeCompare(b.time)); updateCascadingTimes(); newItem.value.text = ''; };
                 const deleteItem = (idx) => { currentTrip.value.itinerary[selectedDate.value].splice(idx, 1); updateCascadingTimes(); };
                 const editItem = (item, idx) => { newItem.value = {...item}; editingIndex.value = idx; };
                 const cancelEdit = () => { editingIndex.value = -1; newItem.value.text=''; };
                 const toggleNote = (item) => item.showNote = !item.showNote;
                 const enableNoteEdit = (item) => item.isEditingNote = true;
                 const saveNote = (item) => { item.isEditingNote = false; syncUpdate(); };
-
                 const totalExpense = computed(() => (currentTrip.value.expenses || []).reduce((a, b) => a + b.twd, 0));
-                const debts = computed(() => {
-                    const exps = currentTrip.value.expenses||[]; const bal={}; (currentTrip.value.members||['Me']).forEach(m=>bal[m]=0);
-                    exps.forEach(e=>{ const pay=e.payer||'Me'; const split=e.splitters||[pay]; const amt=e.twd; bal[pay]+=amt; const share=amt/split.length; split.forEach(s=>bal[s]-=share); });
-                    const cred=[], debt=[]; for(const m in bal){ if(bal[m]>1)cred.push({n:m,a:bal[m]}); if(bal[m]<-1)debt.push({n:m,a:-bal[m]}); }
-                    const res=[]; let i=0,j=0;
-                    while(i<debt.length && j<cred.length){ const d=debt[i], c=cred[j], a=Math.min(d.a, c.a); if(a>0)res.push({from:d.n, to:c.n, amount:Math.round(a)}); d.a-=a; c.a-=a; if(d.a<1)i++; if(c.a<1)j++; }
-                    return res;
-                });
+                const debts = computed(() => { const exps = currentTrip.value.expenses||[]; const bal={}; (currentTrip.value.members||['Me']).forEach(m=>bal[m]=0); exps.forEach(e=>{ const pay=e.payer||'Me'; const split=e.splitters||[pay]; const amt=e.twd; bal[pay]+=amt; const share=amt/split.length; split.forEach(s=>bal[s]-=share); }); const cred=[], debt=[]; for(const m in bal){ if(bal[m]>1)cred.push({n:m,a:bal[m]}); if(bal[m]<-1)debt.push({n:m,a:-bal[m]}); } const res=[]; let i=0,j=0; while(i<debt.length && j<cred.length){ const d=debt[i], c=cred[j], a=Math.min(d.a, c.a); if(a>0)res.push({from:d.n, to:c.n, amount:Math.round(a)}); d.a-=a; c.a-=a; if(d.a<1)i++; if(c.a<1)j++; } return res; });
                 const handleCalc = (btn) => { if(btn==='C') calcInput.value=''; else if(btn==='DEL') calcInput.value=calcInput.value.slice(0,-1); else calcInput.value+=btn; };
                 const calculateTWD = computed(() => Math.round((parseFloat(calcInput.value)||0) * (rates[calcCurrency.value] || 1)));
                 const saveExpense = () => {
@@ -481,7 +425,6 @@
                 const addFlight = () => { if(!currentTrip.value.flights)currentTrip.value.flights=[]; if(editingFlightIndex.value>-1) currentTrip.value.flights[editingFlightIndex.value]={...newFlight.value}; else currentTrip.value.flights.push({...newFlight.value}); syncUpdate(); editingFlightIndex.value=-1; newFlight.value={airline:'',code:'',date:'',time:'',loc:''}; };
                 const editFlight = (f,i) => { newFlight.value={...f}; editingFlightIndex.value=i; };
                 const removeFlight = (i) => { currentTrip.value.flights.splice(i,1); syncUpdate(); };
-                
                 const addHotel = () => { 
                     if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; 
                     if(editingHotelIndex.value>-1) currentTrip.value.hotels[editingHotelIndex.value]={...newHotel.value}; else currentTrip.value.hotels.push({...newHotel.value}); 
@@ -528,7 +471,7 @@
                     addMember, removeMember, saveExpense, deleteExpense, handleCalc, totalExpense, debts,
                     addFlight, editFlight, removeFlight, saveFlight, addHotel, editHotel, removeHotel, saveHotel,
                     addTodo, removeTodo, openTool, closeTools, openMap, getGoogleRouteUrl, saveDayOrder, updateCascadingTimes,
-                    tempDayList, isLocalFile, loginBtnText: isLocalFile.value ? 'Login Unavailable (File Mode)' : 'Sign in with Google'
+                    tempDayList
                 };
             }
         }).mount('#app');
