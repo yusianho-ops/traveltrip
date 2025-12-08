@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v19 (Guest)</title>
+    <title>Travel Planner v21</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,14 +18,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK Setup -->
     <script type="module">
+        // 使用穩定的 v10.7.1 版本以確保模組化相容性
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        // 改用 signInAnonymously
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // ✅ 您的金鑰 (保持不變)
+        // ✅ 您提供的金鑰已整合
         const firebaseConfig = {
             apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
             authDomain: "travel-8eaef.firebaseapp.com",
@@ -41,15 +41,20 @@
             const auth = getAuth(app);
             const db = getFirestore(app);
             
+            // 將功能掛載到全域，並通知 Vue 系統已就緒
             window.fb = { 
                 auth, db, 
                 signInAnonymously, signOut, onAuthStateChanged, 
                 collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc 
             };
-            console.log("Firebase Ready (Anon Mode)");
+            
+            console.log("Firebase 載入成功 (v21)");
+            // 發送一個自訂事件通知 Vue
+            window.dispatchEvent(new Event('firebase-ready'));
+
         } catch (e) {
-            console.error("Firebase Init Error:", e);
-            alert("初始化失敗: " + e.message);
+            console.error("Firebase 初始化失敗:", e);
+            alert("系統錯誤：Firebase 連線失敗，請檢查網路。");
         }
     </script>
 
@@ -80,13 +85,14 @@
         #app-loading { position: fixed; inset: 0; background: #F2C299; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; font-weight: 900; color: #201A17; transition: opacity 0.5s; }
         .hidden-load { opacity: 0; pointer-events: none; }
         [v-cloak] { display: none; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
     </style>
 </head>
 <body class="selection:bg-accent selection:text-white">
 
     <div id="app-loading">
         <div class="text-4xl mb-4"><i class="fa-solid fa-plane-up fa-bounce"></i></div>
-        <div>LOADING...</div>
+        <div>CONNECTING...</div>
     </div>
 
     <div id="app" v-cloak class="min-h-screen relative max-w-md mx-auto overflow-hidden flex flex-col bg-main-bg border-x-2 border-border transition-colors duration-300">
@@ -97,11 +103,13 @@
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
             <p class="mb-8 text-sm font-bold opacity-60 text-text-main">Simple. Fast. Collaborative.</p>
             
-            <button @click="login" class="w-full bg-card-bg border-2 border-border py-4 rounded-xl font-black shadow-hard active:translate-y-1 flex items-center justify-center gap-2 text-text-main group hover:bg-secondary hover:text-white transition-colors">
-                <i class="fa-solid fa-rocket text-xl"></i> START NOW
+            <button @click="login" :disabled="!isFirebaseReady" class="w-full bg-card-bg border-2 border-border py-4 rounded-xl font-black shadow-hard active:translate-y-1 flex items-center justify-center gap-2 text-text-main group hover:bg-secondary hover:text-white transition-colors">
+                <i v-if="isFirebaseReady" class="fa-solid fa-rocket text-xl"></i>
+                <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
+                {{ isFirebaseReady ? 'START NOW' : 'CONNECTING...' }}
             </button>
             
-            <p class="mt-4 text-xs opacity-50 text-text-main">No registration required.</p>
+            <p class="mt-4 text-xs opacity-50 text-text-main">Guest Mode</p>
         </div>
 
         <!-- Main App -->
@@ -116,14 +124,13 @@
                 <header class="flex justify-between items-center mb-6 pt-2">
                     <div><h1 class="text-3xl font-black tracking-tighter uppercase text-text-main">MY TRIPS</h1><div class="h-2 w-16 bg-border mt-1"></div></div>
                     <div class="flex gap-2">
-                        <!-- Logout Button -->
                         <button @click="logout" class="w-10 h-10 bg-red-100 border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center text-red-500 active:translate-y-1"><i class="fa-solid fa-power-off"></i></button>
                         <button @click="showSettings=true" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center text-border active:translate-y-1"><i class="fa-solid fa-gear"></i></button>
                     </div>
                 </header>
 
                 <div class="mb-4 flex gap-2">
-                    <input v-model="joinTripId" placeholder="Paste Trip ID to Join" class="text-xs p-3">
+                    <input v-model="joinTripId" placeholder="Paste Trip ID to Join" class="text-xs p-3 dark-input">
                     <button @click="joinTrip" class="bg-secondary text-white font-bold px-4 rounded border-2 border-border shadow-hard-sm">JOIN</button>
                 </div>
 
@@ -217,16 +224,13 @@
                 </div>
             </div>
 
-            <!-- VIEW: BUDGET -->
+            <!-- VIEW: BUDGET & PACKING -->
             <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg text-text-main">< BACK</button><h2 class="font-black text-xl text-text-main">{{ t('budget') }}</h2><button @click="showCalculator = true" class="w-10 h-10 bg-accent text-white border-2 border-border shadow-hard-sm rounded-lg">+</button></div><div class="p-4 overflow-y-auto pb-24 space-y-4"><div class="bg-border text-white p-4 rounded-xl shadow-hard border-2 border-border text-center"><p class="text-xs font-bold opacity-80">{{ t('totalExpense') }}</p><p class="text-4xl font-black mt-1">NT$ {{ totalExpense }}</p></div><div class="bg-card-bg border-2 border-border rounded-xl p-3"><h3 class="font-black text-sm mb-2 text-text-main">{{ t('members') }}</h3><div class="flex gap-2 mb-2"><input v-model="newMemberName" placeholder="Name" class="flex-1 p-2 border-2 border-border rounded dark-input"><button @click="addMember" class="bg-border text-white px-4 rounded font-bold">+</button></div><div class="flex flex-wrap gap-2"><span v-for="(m, i) in (currentTrip.members || ['Me'])" :key="i" class="px-2 py-1 bg-secondary text-white rounded border border-border text-sm font-bold flex items-center gap-2">{{ m }} <button @click="removeMember(i)" v-if="m !== 'Me'" class="text-red-700">x</button></span></div></div><div class="space-y-2"><h3 class="font-black text-sm text-text-main">{{ t('history') }}</h3><div v-for="(exp, i) in (currentTrip.expenses || []).slice().reverse()" :key="i" class="bg-card-bg p-3 rounded-xl border border-border flex justify-between items-center shadow-sm"><div><span class="font-bold block text-text-main">{{ exp.note }}</span><span class="text-xs text-gray-500">{{ exp.payer }} {{ t('paidFor') }} {{ (exp.splitters||[]).join(', ') }}</span></div><div class="text-right"><span class="font-black block text-text-main">NT$ {{ exp.twd }}</span><button @click="deleteExpense(i)" class="text-red-400 text-xs underline">delete</button></div></div></div></div></div>
-            
-            <!-- VIEW: PACKING -->
             <div v-if="currentView === 'packing_list'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg text-text-main">< BACK</button><h2 class="font-black text-xl text-text-main">{{ t('packing') }}</h2><div class="w-10"></div></div><div class="p-4 flex-1 overflow-y-auto pb-24"><div class="flex gap-2 mb-4"><input v-model="newTodo" placeholder="Add Item" class="flex-1 p-3 text-sm border-2 border-border rounded dark-input"><button @click="addTodo" class="w-12 bg-border text-white rounded font-bold text-xl shadow-hard-sm">+</button></div><div class="space-y-2"><div v-for="(todo, i) in (currentTrip.todos || [])" :key="i" class="flex items-center gap-3 p-3 bg-card-bg border-2 border-border rounded-xl shadow-sm"><input type="checkbox" v-model="todo.done" @change="syncUpdate" class="w-6 h-6 accent-accent border-2 border-border rounded"><span :class="{'opacity-30 line-through': todo.done}" class="font-bold flex-1 text-lg text-text-main">{{ todo.text }}</span><button @click="removeTodo(i)" class="text-red-500 w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-trash"></i></button></div></div></div></div>
 
             <!-- Modals -->
             <div v-if="isModalOpen" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-6"><div class="bg-main-bg w-full max-w-sm p-6 rounded-2xl border-2 border-border shadow-hard space-y-4"><h2 class="text-2xl font-black uppercase text-center text-text-main">NEW TRIP</h2><input v-model="form.destination" placeholder="Destination" class="w-full dark-input"><div class="flex gap-2"><input type="date" v-model="form.startDate" class="dark-input"><input type="date" v-model="form.endDate" class="dark-input"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-card-bg border-2 border-border rounded text-text-main">CANCEL</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white border-2 border-border rounded shadow-hard">CREATE</button></div></div></div>
             <div v-if="showSettings" class="fixed inset-0 bg-main-bg z-50 p-6 flex flex-col"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-text-main">SETTINGS</h2><button @click="showSettings = false" class="font-bold text-xl text-text-main">X</button></div><div class="mb-6"><label class="block font-bold mb-2 text-text-main">THEME</label><div class="grid grid-cols-2 gap-3"><button v-for="(theme, key) in themes" :key="key" @click="applyTheme(key)" class="p-3 border-2 border-border rounded-lg text-xs font-bold flex items-center gap-2" :class="currentThemeKey === key ? 'bg-border text-white' : 'bg-card-bg text-text-main'"><div class="w-4 h-4 rounded-full border border-gray-400" :style="{backgroundColor: theme['--color-bg']}"></div>{{ theme.name }}</button></div></div></div>
-            <div v-if="showCalculator" class="fixed inset-0 bg-border/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm"><div class="bg-main-bg w-full max-w-sm border-2 border-border shadow-hard rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"><div class="bg-border text-white p-3 flex justify-between items-center"><h3 class="font-black text-lg">{{ t('calculator') }}</h3><button @click="closeTools" class="text-white">X</button></div><div class="p-4 overflow-y-auto"><div class="bg-card-bg border-2 border-border rounded-xl p-3 mb-3"><div class="flex justify-between mb-2 gap-2"><select v-model="calcCurrency" class="w-1/3 text-xs bg-gray-100 border-none dark-input"><option value="JPY">JPY</option><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="THB">THB</option></select><input v-model="expenseNote" :placeholder="t('note')" class="flex-1 text-xs border-none bg-gray-100 !shadow-none dark-input"></div><div class="text-right border-t border-dashed border-gray-300 pt-2"><div class="text-gray-400 text-xs font-bold">{{ calcInput || '0' }} {{ calcCurrency }}</div><div class="text-3xl font-black text-text-main">NT$ {{ calculateTWD }}</div></div></div><div class="bg-card-bg border-2 border-border rounded-xl p-3 mb-3 text-xs"><div class="flex justify-between items-center mb-2"><span class="font-bold text-text-main">{{ t('payer') }}:</span><select v-model="expensePayer" class="w-24 p-1 border-border bg-secondary text-white font-bold rounded"><option v-for="m in (currentTrip.members || ['Me'])" :key="m" :value="m">{{ m }}</option></select></div><div class="mb-1 font-bold text-text-main">{{ t('splitWith') }}:</div><div class="flex flex-wrap gap-2"><label v-for="m in (currentTrip.members || ['Me'])" :key="m" class="cursor-pointer"><input type="checkbox" :value="m" v-model="expenseSplitters" class="hidden cb-custom"><div class="px-2 py-1 border border-border rounded text-gray-500 transition-colors">{{ m }}</div></label></div></div><div class="grid grid-cols-4 gap-2"><button v-for="btn in ['7','8','9','DEL','4','5','6','C','1','2','3','.','00','0']" :key="btn" @click="handleCalc(btn)" class="h-12 bg-card-bg text-text-main border-2 border-border rounded font-black shadow-hard-sm active:translate-y-1">{{ btn }}</button><button @click="saveExpense" class="col-span-2 h-12 bg-accent text-white border-2 border-border rounded font-black shadow-hard-sm active:translate-y-1">{{ t('save') }}</button></div></div></div></div>
             <div v-if="showDayReorderModal" class="fixed inset-0 bg-border/90 z-[60] flex items-center justify-center p-4"><div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[80vh]"><div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('reorderDays') }}</h3><button @click="showDayReorderModal=false">X</button></div><div class="p-4 text-xs text-gray-500">Drag to reorder content.</div><div id="day-sortable-list" class="p-4 space-y-2 overflow-y-auto"><div v-for="(day, idx) in tempDayList" :key="day.id" :data-id="day.id" class="p-3 bg-main-bg border-2 border-border rounded font-bold cursor-grab active:cursor-grabbing text-text-main">Day {{ idx + 1 }} - (Content of Day {{ day.originalIdx + 1 }})</div></div><div class="p-4 border-t-2 border-border"><button @click="saveDayOrder" class="w-full bg-accent text-white py-3 font-bold rounded shadow-hard active:translate-y-1">CONFIRM REORDER</button></div></div></div>
             <div v-if="showFlightModal" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-4"><div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[80vh]"><div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('flights') }}</h3><button @click="showFlightModal=false">X</button></div><div class="p-4 space-y-2 overflow-y-auto"><div v-for="(f,i) in (currentTrip.flights||[])" :key="i" class="bg-main-bg p-2 border-2 border-border relative text-text-main flex justify-between items-center"><div><div class="font-bold">{{ f.airline }} {{ f.code }}</div><div>{{ formatDate(f.date) }} {{ f.time }}</div></div><div class="flex gap-2"><button @click="editFlight(f, i)" class="text-blue-500"><i class="fa-solid fa-pen"></i></button><button @click="removeFlight(i)" class="text-red-500"><i class="fa-solid fa-trash"></i></button></div></div><div class="pt-2 border-t-2 border-dashed border-border space-y-1 bg-secondary/10 p-2 rounded"><p class="text-xs font-bold text-accent mb-1">{{ editingFlightIndex > -1 ? 'EDIT FLIGHT' : 'NEW FLIGHT' }}</p><input v-model="newFlight.airline" placeholder="Airline" class="text-xs dark-input"><input v-model="newFlight.code" placeholder="Flight No" class="text-xs dark-input"><div class="flex gap-1"><input type="date" v-model="newFlight.date" class="text-xs dark-input"><input type="time" v-model="newFlight.time" class="text-xs dark-input"></div><input v-model="newFlight.loc" placeholder="Terminal" class="text-xs dark-input"><button @click="addFlight" class="w-full bg-border text-white font-bold text-xs py-2">{{ editingFlightIndex > -1 ? 'UPDATE' : 'ADD' }}</button></div></div></div></div>
             <div v-if="showHotelModal" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-4"><div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[80vh]"><div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('hotels') }}</h3><button @click="showHotelModal=false">X</button></div><div class="p-4 space-y-2 overflow-y-auto"><div v-for="(h,i) in (currentTrip.hotels||[])" :key="i" class="bg-main-bg p-2 border-2 border-border relative text-text-main flex justify-between items-center"><div><div class="font-bold">{{ h.name }}</div><div class="text-xs">{{ formatDate(h.checkIn) }}~{{ formatDate(h.checkOut) }}</div></div><div class="flex gap-2"><button @click="editHotel(h, i)" class="text-blue-500"><i class="fa-solid fa-pen"></i></button><button @click="removeHotel(i)" class="text-red-500"><i class="fa-solid fa-trash"></i></button></div></div><div class="pt-2 border-t-2 border-dashed border-border space-y-1 bg-secondary/10 p-2 rounded"><p class="text-xs font-bold text-accent mb-1">{{ editingHotelIndex > -1 ? 'EDIT HOTEL' : 'NEW HOTEL' }}</p><input v-model="newHotel.name" placeholder="Name" class="text-xs dark-input"><input v-model="newHotel.address" placeholder="Address" class="text-xs dark-input"><div class="grid grid-cols-2 gap-1"><input type="date" v-model="newHotel.checkIn" class="text-xs dark-input"><input type="date" v-model="newHotel.checkOut" class="text-xs dark-input"></div><button @click="addHotel" class="w-full bg-border text-white font-bold text-xs py-2">{{ editingHotelIndex > -1 ? 'UPDATE' : 'ADD' }}</button></div></div></div></div>
@@ -237,11 +241,11 @@
     <script>
         const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
-        // ... (i18n and themes same as v19)
         const i18n = {
             'zh-TW': { trips:'我的行程', newTrip:'新增行程', editTrip:'編輯行程', settings:'設定', language:'語言', members:'成員管理', save:'儲存', cancel:'取消', destination:'目的地', uploadCover:'上傳封面', weather:'當地天氣', itinerary:'每日行程', itineraryDesc:'導航 & 規劃', budget:'記帳', flights:'航班', hotels:'住宿', emptyItinerary:'點擊下方按鈕開始規劃', navigate:'導航', calculator:'記帳計算機', note:'備註', payer:'先付者', splitWith:'分攤給', sightseeing:'景點', food:'吃飯', shopping:'購物', accommodation:'住宿', enterItem:'輸入行程...', debtSettlement:'債務結算', noDebt:'目前無欠款', owes:'欠', history:'歷史紀錄', paidFor:'幫付', totalExpense:'總支出', packing:'行前清單', addItem:'新增物品', enterNote:'輸入備註...', uploadPhoto:'上傳照片', viewNote:'備註/照片', confirm:'確認', reorderDays:'排序天數', back:'返回', edit:'編輯', addNote:'新增備註' },
-            // ...
+            // ... (other languages same as v20)
         };
+
         const themes = {
             dune: { name: 'Dune', '--color-bg': '#F2C299', '--color-card': '#FFFFFF', '--color-accent': '#C56C39', '--color-border': '#201A17', '--color-text': '#201A17', '--color-secondary': '#E49C69', '--color-input-bg': '#FFFFFF', '--color-input-text': '#201A17' },
             seafoam: { name: 'Seafoam', '--color-bg': '#9FE7E7', '--color-card': '#E8FBFF', '--color-accent': '#289FB7', '--color-border': '#0F1A1B', '--color-text': '#0F1A1B', '--color-secondary': '#6ECBD3', '--color-input-bg': '#FFFFFF', '--color-input-text': '#0F1A1B' },
@@ -265,15 +269,17 @@
                 const currentThemeKey = ref('dune');
                 const selectedDate = ref('');
                 const joinTripId = ref('');
+                const isFirebaseReady = ref(false); // Key for button state
+                
                 const form = ref({ destination: '', startDate: '', endDate: '', coverImage: null });
                 const newItem = ref({ time: '10:00', text: '', category: 'sightseeing' });
                 const newTodo = ref('');
                 
-                // ... (Edit/Calc states same as v19)
+                // Edit States
                 const isEditMode = ref(false); const editTripIndex = ref(-1); const editingIndex = ref(-1); const editingFlightIndex = ref(-1); const editingHotelIndex = ref(-1);
                 const newFlight = ref({ airline: '', code:'', date:'', time:'', loc:'' }); const newHotel = ref({ name:'', address:'', checkIn:'', checkOut:'' }); const newMemberName = ref('');
                 const calcCurrency = ref('JPY'); const calcInput = ref(''); const expenseNote = ref(''); const expensePayer = ref('Me'); const expenseSplitters = ref(['Me']); const rates = { JPY: 0.22, KRW: 0.024, USD: 32.1, EUR: 34.5, THB: 0.9 };
-                const currentLang = ref('zh-TW'); const t = (key) => i18n['zh-TW'][key] || key; // Default to ZH-TW
+                const currentLang = ref('zh-TW'); const t = (key) => i18n['zh-TW'][key] || key;
                 const weatherData = ref({temp: 25});
                 const tempDayList = ref([]);
                 let unsubscribeTrips = null;
@@ -284,23 +290,31 @@
                 onMounted(async () => {
                     const savedTheme = localStorage.getItem('app_theme');
                     applyTheme(savedTheme || 'dune');
+                    
+                    // Listener for Firebase ready
+                    window.addEventListener('firebase-ready', () => {
+                        isFirebaseReady.value = true;
+                        if(window.fb && window.fb.auth) {
+                            window.fb.onAuthStateChanged(window.fb.auth, (u) => {
+                                user.value = u;
+                                if (u) loadTrips(); else trips.value = [];
+                            });
+                        }
+                    });
+                    
+                    // Fallback check if event fired before mount
+                    if(window.fb) isFirebaseReady.value = true;
 
-                    if(window.fb && window.fb.auth) {
-                        window.fb.onAuthStateChanged(window.fb.auth, (u) => {
-                            user.value = u;
-                            if (u) loadTrips(); else trips.value = [];
-                        });
-                    }
                     document.getElementById('app-loading').classList.add('hidden-load');
                 });
 
                 // LOGIN LOGIC (Anonymous)
                 const login = async () => {
-                    if (!window.fb) { alert("Firebase SDK 未載入，請檢查網路。"); return; }
+                    if (!window.fb) { alert("Firebase 連線中，請稍後..."); return; }
                     try { 
                         await window.fb.signInAnonymously(window.fb.auth); 
                     } catch (e) { 
-                        alert("登入錯誤: " + e.message); 
+                        alert("登入錯誤: " + e.message + "\n請檢查您的 API Key 是否正確，或網路是否正常。"); 
                     } 
                 };
                 const logout = () => window.fb.signOut(window.fb.auth);
@@ -315,13 +329,13 @@
                     });
                 };
 
+                // ... (All other logic same as v20)
                 const createCloudTrip = async () => {
                     if (!user.value) return;
                     const newTrip = { destination: form.value.destination, startDate: form.value.startDate, endDate: form.value.endDate, coverImage: form.value.coverImage, members: [user.value.uid], itinerary: {}, todos: [], expenses: [], flights: [], hotels: [], createdAt: Date.now() };
                     await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), newTrip);
                     isModalOpen.value = false;
                 };
-
                 const joinTrip = async () => {
                     if(!joinTripId.value) return;
                     try {
@@ -330,9 +344,7 @@
                         if(tripSnap.exists()) { await window.fb.updateDoc(tripRef, { members: window.fb.arrayUnion(user.value.uid) }); alert("加入成功！"); joinTripId.value = ''; } else { alert("找不到此 ID"); }
                     } catch(e) { alert("加入失敗: " + e.message); }
                 };
-
                 const deleteTrip = async (trip) => { if(confirm('Delete?')) await window.fb.deleteDoc(window.fb.doc(window.fb.db, "trips", trip.id)); };
-
                 const openTrip = (trip) => {
                     if(unsubscribeCurrentTrip) unsubscribeCurrentTrip();
                     unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => {
@@ -340,40 +352,23 @@
                             currentTrip.value = { id: doc.id, ...doc.data() };
                             if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate);
                         } else {
-                            currentView.value = 'home'; // Trip deleted
+                            currentView.value = 'home';
                         }
                     });
                     currentView.value = 'dashboard';
                 };
-
-                const syncUpdate = async () => {
-                    if(currentTrip.value.id) {
-                        await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value });
-                    }
-                };
-
-                // Base64 Images
+                const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
                 const compressAndConvertToBase64 = (file, callback) => {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         const img = new Image();
                         img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            const maxWidth = 600;
-                            const scale = maxWidth / img.width;
-                            canvas.width = maxWidth; canvas.height = img.height * scale;
-                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                            callback(canvas.toDataURL('image/jpeg', 0.6));
-                        };
-                        img.src = ev.target.result;
-                    };
-                    reader.readAsDataURL(file);
+                            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const maxWidth = 600; const scale = maxWidth / img.width; canvas.width = maxWidth; canvas.height = img.height * scale; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); callback(canvas.toDataURL('image/jpeg', 0.6));
+                        }; img.src = ev.target.result;
+                    }; reader.readAsDataURL(file);
                 };
                 const handleImageUpload = (e) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => form.value.coverImage = b64); };
                 const handleItemImage = (e, item) => { const file = e.target.files[0]; if(!file) return; compressAndConvertToBase64(file, (b64) => { item.imageUrl = b64; syncUpdate(); }); };
-
-                // Helpers
                 const applyTheme = (key) => { currentThemeKey.value = key; localStorage.setItem('app_theme', key); const theme = themes[key]; for (const [k, v] of Object.entries(theme)) { if (k.startsWith('--')) document.documentElement.style.setProperty(k, v); } };
                 const formatDate = (dateStr) => dateStr ? dateStr.replace(/-/g, '/') : '';
                 const getDays = (s,e) => Math.floor((new Date(e)-new Date(s))/86400000)+1;
@@ -381,8 +376,6 @@
                 const getCategoryEmoji = (cat) => ({ sightseeing:'📸', food:'🍴', shopping:'🛍️', hotel:'🏨' }[cat] || '📍');
                 const getCategoryText = (cat) => t(cat);
                 const addTime = (t,d) => { if(!t||!d)return t; const [h,m]=t.split(':').map(Number); let min=h*60+m; if(d.includes('h')) min+=parseFloat(d)*60; else min+=parseInt(d); return `${String(Math.floor(min/60)%24).padStart(2,'0')}:${String(Math.floor(min%60)).padStart(2,'0')}`; };
-
-                // Features & CRUD (Same as before)
                 const changeToItinerary = async () => {
                     currentView.value = 'itinerary'; await nextTick();
                     const el = document.getElementById('sortable-list');
@@ -405,46 +398,19 @@
                 const debts = computed(() => { const exps = currentTrip.value.expenses||[]; const bal={}; (currentTrip.value.members||['Me']).forEach(m=>bal[m]=0); exps.forEach(e=>{ const pay=e.payer||'Me'; const split=e.splitters||[pay]; const amt=e.twd; bal[pay]+=amt; const share=amt/split.length; split.forEach(s=>bal[s]-=share); }); const cred=[], debt=[]; for(const m in bal){ if(bal[m]>1)cred.push({n:m,a:bal[m]}); if(bal[m]<-1)debt.push({n:m,a:-bal[m]}); } const res=[]; let i=0,j=0; while(i<debt.length && j<cred.length){ const d=debt[i], c=cred[j], a=Math.min(d.a, c.a); if(a>0)res.push({from:d.n, to:c.n, amount:Math.round(a)}); d.a-=a; c.a-=a; if(d.a<1)i++; if(c.a<1)j++; } return res; });
                 const handleCalc = (btn) => { if(btn==='C') calcInput.value=''; else if(btn==='DEL') calcInput.value=calcInput.value.slice(0,-1); else calcInput.value+=btn; };
                 const calculateTWD = computed(() => Math.round((parseFloat(calcInput.value)||0) * (rates[calcCurrency.value] || 1)));
-                const saveExpense = () => {
-                    if(!currentTrip.value.expenses) currentTrip.value.expenses=[];
-                    currentTrip.value.expenses.push({ note: expenseNote.value||'Gen', twd: calculateTWD.value, original: calcInput.value, payer: expensePayer.value, splitters: [...expenseSplitters.value] });
-                    syncUpdate(); showCalculator.value=false; calcInput.value=''; expenseNote.value='';
-                };
+                const saveExpense = () => { if(!currentTrip.value.expenses) currentTrip.value.expenses=[]; currentTrip.value.expenses.push({ note: expenseNote.value||'Gen', twd: calculateTWD.value, original: calcInput.value, payer: expensePayer.value, splitters: [...expenseSplitters.value] }); syncUpdate(); showCalculator.value=false; calcInput.value=''; expenseNote.value=''; };
                 const deleteExpense = (i) => { const real=(currentTrip.value.expenses.length-1)-i; currentTrip.value.expenses.splice(real,1); syncUpdate(); };
                 const addMember = () => { if(newMemberName.value){ if(!currentTrip.value.members)currentTrip.value.members=['Me']; currentTrip.value.members.push(newMemberName.value); syncUpdate(); newMemberName.value=''; }};
                 const removeMember = (i) => { currentTrip.value.members.splice(i,1); syncUpdate(); };
-
-                const openNewTripModal = () => { isEditMode.value=false; form.value={destination:'',startDate:'',endDate:'',coverImage:null}; isModalOpen.value=true; };
-                const openEditTrip = (trip, idx) => { isEditMode.value=true; editTripIndex.value=idx; form.value={...trip}; isModalOpen.value=true; };
-                const saveTripFromModal = async () => {
-                    if(isEditMode.value) { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", trips.value[editTripIndex.value].id), form.value); }
-                    else { createCloudTrip(); }
-                    isModalOpen.value=false;
-                };
-                
                 const addFlight = () => { if(!currentTrip.value.flights)currentTrip.value.flights=[]; if(editingFlightIndex.value>-1) currentTrip.value.flights[editingFlightIndex.value]={...newFlight.value}; else currentTrip.value.flights.push({...newFlight.value}); syncUpdate(); editingFlightIndex.value=-1; newFlight.value={airline:'',code:'',date:'',time:'',loc:''}; };
                 const editFlight = (f,i) => { newFlight.value={...f}; editingFlightIndex.value=i; };
                 const removeFlight = (i) => { currentTrip.value.flights.splice(i,1); syncUpdate(); };
-                const addHotel = () => { 
-                    if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; 
-                    if(editingHotelIndex.value>-1) currentTrip.value.hotels[editingHotelIndex.value]={...newHotel.value}; else currentTrip.value.hotels.push({...newHotel.value}); 
-                    const d = formatDate(newHotel.value.checkIn);
-                    if(d){ if(!currentTrip.value.itinerary[d]) currentTrip.value.itinerary[d]=[]; currentTrip.value.itinerary[d].unshift({id:Date.now(), time:'09:00', text:'Check-in: '+newHotel.value.name, categoryEmoji:'🏨', categoryText:t('accommodation'), travelMode:'🚗', isEditingNote:false}); }
-                    syncUpdate(); editingHotelIndex.value=-1; newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; 
-                };
+                const addHotel = () => { if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; if(editingHotelIndex.value>-1) currentTrip.value.hotels[editingHotelIndex.value]={...newHotel.value}; else currentTrip.value.hotels.push({...newHotel.value}); const d = formatDate(newHotel.value.checkIn); if(d){ if(!currentTrip.value.itinerary[d]) currentTrip.value.itinerary[d]=[]; currentTrip.value.itinerary[d].unshift({id:Date.now(), time:'09:00', text:'Check-in: '+newHotel.value.name, categoryEmoji:'🏨', categoryText:t('accommodation'), travelMode:'🚗', isEditingNote:false}); } syncUpdate(); editingHotelIndex.value=-1; newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; };
                 const editHotel = (h,i) => { newHotel.value={...h}; editingHotelIndex.value=i; };
                 const removeHotel = (i) => { currentTrip.value.hotels.splice(i,1); syncUpdate(); };
-
                 const addTodo = () => { if(newTodo.value){ if(!currentTrip.value.todos)currentTrip.value.todos=[]; currentTrip.value.todos.push({text:newTodo.value, done:false}); syncUpdate(); newTodo.value=''; }};
                 const removeTodo = (i) => { currentTrip.value.todos.splice(i,1); syncUpdate(); };
-
-                const saveDayOrder = () => {
-                    const el = document.getElementById('day-sortable-list');
-                    const newOrderIds = Array.from(el.children).map(child => parseInt(child.getAttribute('data-id')));
-                    const currentMap = { ...currentTrip.value.itinerary }; const newMap = {};
-                    tripDates.value.forEach((d, i) => { newMap[d] = currentMap[tripDates.value[newOrderIds[i]]] || []; });
-                    currentTrip.value.itinerary = newMap; syncUpdate(); showDayReorderModal.value=false; selectedDate.value=tripDates.value[0];
-                };
+                const saveDayOrder = () => { const el = document.getElementById('day-sortable-list'); const newOrderIds = Array.from(el.children).map(child => parseInt(child.getAttribute('data-id'))); const currentMap = { ...currentTrip.value.itinerary }; const newMap = {}; tripDates.value.forEach((d, i) => { newMap[d] = currentMap[tripDates.value[newOrderIds[i]]] || []; }); currentTrip.value.itinerary = newMap; syncUpdate(); showDayReorderModal.value=false; selectedDate.value=tripDates.value[0]; };
                 const openTool = (t) => { if(t==='budget')currentView.value='budget_detail'; else if(t==='packing')currentView.value='packing_list'; };
                 const closeTools = () => showCalculator.value=false;
                 const openMap = (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt + ' ' + currentTrip.value.destination)}`);
@@ -471,7 +437,7 @@
                     addMember, removeMember, saveExpense, deleteExpense, handleCalc, totalExpense, debts,
                     addFlight, editFlight, removeFlight, saveFlight, addHotel, editHotel, removeHotel, saveHotel,
                     addTodo, removeTodo, openTool, closeTools, openMap, getGoogleRouteUrl, saveDayOrder, updateCascadingTimes,
-                    tempDayList
+                    tempDayList, isFirebaseReady
                 };
             }
         }).mount('#app');
