@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v27 (Pro UI)</title>
+    <title>Trip Planner v28 (Final)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,7 +18,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
-    <!-- Firebase SDK (v11.0.2) -->
+    <!-- Firebase SDK (v11.0.2 Stable) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
@@ -66,22 +66,39 @@
         body { background-color: var(--color-bg); color: var(--color-text); font-family: 'Inter', 'Noto Sans TC', 'Noto Sans JP', 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior-y: none; }
         .scrollbar-hide::-webkit-scrollbar { display: none; } 
         
-        /* Custom Input Styling (Point 2, 3, 12) */
+        /* Unified Input Styling with proper padding */
         input, select, textarea { 
             background: var(--color-input-bg); color: var(--color-input-text); 
             border: 2px solid var(--color-border); 
-            padding: 0.6rem 0.5rem 0.6rem 0.8rem; /* Point 2, 12: Padding adjustment */
+            padding: 0.8rem 0.5rem 0.8rem 0.8rem; /* Point 2, 12: Extra padding */
             border-radius: 0.5rem; font-weight: 700; outline: none; 
             box-shadow: 2px 2px 0px var(--color-border); transition: all 0.1s; width: 100%; font-size: 16px !important; 
         }
         input:focus, textarea:focus { transform: translate(1px, 1px); box-shadow: 1px 1px 0px var(--color-border); }
         
-        /* Date Placeholder Trick (Point 3) */
-        input[type="date"]::before { content: attr(placeholder); color: #999; margin-right: 0.5em; }
-        input[type="date"]:focus::before, input[type="date"]:valid::before { content: ""; display: none; }
-        
+        /* --- Date Input Fix (Point 3, 12) --- */
+        input[type="date"] {
+            -webkit-appearance: none;
+            position: relative;
+            min-height: 48px; 
+            line-height: 1.2;
+        }
+        /* Hide native text if invalid (empty) */
+        input[type="date"]:invalid::-webkit-datetime-edit { color: transparent; }
+        /* Show custom placeholder */
+        input[type="date"]:invalid::before {
+            content: attr(placeholder);
+            position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
+            color: #9CA3AF; pointer-events: none;
+        }
+        /* Show native text when valid or focused */
+        input[type="date"]:focus::-webkit-datetime-edit,
+        input[type="date"]:valid::-webkit-datetime-edit { color: var(--color-input-text) !important; }
+        input[type="date"]:focus::before,
+        input[type="date"]:valid::before { display: none; }
+        /* ------------------------------------ */
+
         .sortable-ghost { opacity: 0.4; background: var(--color-accent); }
-        .boarding-pass-mask { mask-image: radial-gradient(circle at 10px 50%, transparent 10px, black 11px); -webkit-mask-image: radial-gradient(circle at center left, transparent 10px, black 11px); }
         
         #app-loading { position: fixed; inset: 0; background: #F2C299; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; font-weight: 900; color: #201A17; transition: opacity 0.5s; }
         .hidden-load { opacity: 0; pointer-events: none; }
@@ -138,7 +155,7 @@
                     <div v-else-if="trips.length === 0" class="text-center opacity-50 mt-10 font-bold text-text-main">{{ t('noTrips') }}</div>
                     
                     <div v-for="(trip, index) in trips" :key="trip.id" @click="openTrip(trip)" class="bg-card-bg border-2 border-border shadow-hard rounded-xl overflow-hidden cursor-pointer active:translate-y-1 relative group">
-                        <!-- Point 1: ID removed from card face -->
+                        <!-- Point 1: ID Removed from photo -->
                         <div class="h-32 border-b-2 border-border relative bg-gray-100 flex items-center justify-center overflow-hidden">
                              <img v-if="trip.coverImage" :src="trip.coverImage" class="w-full h-full object-cover">
                              <div v-else class="w-full h-full bg-secondary flex items-center justify-center"><i class="fa-solid fa-mountain-sun text-4xl text-border opacity-20"></i></div>
@@ -158,7 +175,7 @@
             <!-- VIEW: DASHBOARD -->
             <div v-if="currentView === 'dashboard'" class="flex flex-col h-screen bg-main-bg overflow-hidden">
                 <div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20">
-                    <!-- Point 8, 14: Back button arrow only -->
+                    <!-- Point 8, 14: Arrow icon only -->
                     <button @click="currentView = 'home'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg active:translate-y-1 text-text-main flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
                     <div><h2 class="font-black text-xl uppercase tracking-widest text-text-main text-center">{{ currentTrip.destination }}</h2><p class="text-[10px] text-center text-gray-500 font-bold cursor-pointer" @click="copyId">ID: {{ currentTrip.id }} (Copy)</p></div>
                     <div class="w-10"></div>
@@ -169,18 +186,16 @@
                         <div><div class="text-xs font-bold text-gray-500 uppercase">{{ t('weather') }}</div><div class="text-2xl font-black flex items-center gap-2 text-text-main"><i class="fa-solid fa-cloud-sun text-accent"></i> {{ weatherData.temp }}°C</div></div>
                     </div>
 
-                    <!-- Point 4: Unified Font Size (text-sm font-black) -->
-                    <!-- Point 5: Wishlist & Translator Added -->
                     <div class="grid grid-cols-2 gap-3 mb-6">
                         <div @click="changeToItinerary" class="col-span-2 bg-secondary border-2 border-border shadow-hard rounded-xl h-36 flex flex-col justify-center items-center cursor-pointer active:scale-98 relative overflow-hidden"><i class="fa-solid fa-map-location-dot text-7xl text-border opacity-10 absolute -right-2 -bottom-2"></i><h3 class="text-2xl font-black text-border z-10">{{ t('itinerary') }}</h3></div>
-                        
+                        <!-- Point 4: Unified Font Size -->
                         <div @click="openTool('budget')" class="bg-card-bg border-2 border-border shadow-hard rounded-xl h-24 flex flex-col justify-center items-center p-2 active:scale-95 cursor-pointer"><i class="fa-solid fa-wallet text-2xl mb-1 text-accent"></i><span class="font-black text-sm text-text-main">{{ t('budget') }}</span></div>
                         <div @click="openTool('packing')" class="bg-card-bg border-2 border-border shadow-hard rounded-xl h-24 flex flex-col justify-center items-center p-2 active:scale-95 cursor-pointer"><i class="fa-solid fa-suitcase text-2xl mb-1 text-text-main"></i><span class="font-black text-sm text-text-main">{{ t('packing') }}</span></div>
                         
                         <div @click="showFlightModal=true" class="bg-card-bg border-2 border-border shadow-hard rounded-xl h-24 flex flex-col justify-center items-center p-2 active:scale-95 cursor-pointer"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-black text-sm text-text-main">{{ t('flights') }}</span></div>
                         <div @click="showHotelModal=true" class="bg-card-bg border-2 border-border shadow-hard rounded-xl h-24 flex flex-col justify-center items-center p-2 active:scale-95 cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-black text-sm text-text-main">{{ t('hotels') }}</span></div>
                         
-                        <!-- New Features -->
+                        <!-- Point 5: Wishlist & Translator -->
                         <div @click="openTool('wishlist')" class="bg-card-bg border-2 border-border shadow-hard rounded-xl h-24 flex flex-col justify-center items-center p-2 active:scale-95 cursor-pointer"><i class="fa-solid fa-heart text-2xl mb-1 text-red-500"></i><span class="font-black text-sm text-text-main">{{ t('wishlist') }}</span></div>
                         <div @click="openTool('translator')" class="bg-card-bg border-2 border-border shadow-hard rounded-xl h-24 flex flex-col justify-center items-center p-2 active:scale-95 cursor-pointer"><i class="fa-solid fa-language text-2xl mb-1 text-blue-500"></i><span class="font-black text-sm text-text-main">{{ t('translate') }}</span></div>
                     </div>
@@ -233,7 +248,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: BUDGET DETAIL (Point 6, 7: Currency Display) -->
+            <!-- VIEW: BUDGET DETAIL (Point 6, 7) -->
             <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20">
                     <button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
@@ -244,18 +259,15 @@
                     <div class="bg-border text-white p-4 rounded-xl shadow-hard border-2 border-border text-center">
                         <p class="text-xs font-bold opacity-80">{{ t('totalExpense') }} (Est. TWD)</p>
                         <p class="text-4xl font-black mt-1">NT$ {{ totalExpense }}</p>
-                        <!-- Point 7: Total by Original Currency -->
                         <div class="mt-2 flex flex-wrap justify-center gap-2 text-xs opacity-80 border-t border-gray-600 pt-2">
                              <span v-for="(amt, curr) in groupedTotals" :key="curr" class="px-2 py-0.5 bg-gray-700 rounded">{{ curr }}: {{ amt }}</span>
                         </div>
                     </div>
-                    <!-- Member Logic... -->
                     <div class="bg-card-bg border-2 border-border rounded-xl p-3">
                         <h3 class="font-black text-sm mb-2 text-text-main">{{ t('members') }}</h3>
                         <div class="flex gap-2 mb-2"><input v-model="newMemberName" placeholder="Name" class="flex-1 p-2 border-2 border-border rounded dark-input"><button @click="addMember" class="bg-border text-white px-4 rounded font-bold">+</button></div>
                         <div class="flex flex-wrap gap-2"><span v-for="(m, i) in (currentTrip.members || ['Me'])" :key="i" class="px-2 py-1 bg-secondary text-white rounded border border-border text-sm font-bold flex items-center gap-2">{{ m }} <button @click="removeMember(i)" v-if="m !== 'Me'" class="text-red-700">x</button></span></div>
                     </div>
-                    <!-- Point 6: History showing original currency -->
                     <div class="space-y-2">
                         <h3 class="font-black text-sm text-text-main">{{ t('history') }}</h3>
                         <div v-for="(exp, i) in (currentTrip.expenses || []).slice().reverse()" :key="i" class="bg-card-bg p-3 rounded-xl border border-border flex justify-between items-center shadow-sm">
@@ -273,7 +285,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: WISHLIST (New Point 5) -->
+            <!-- VIEW: WISHLIST -->
             <div v-if="currentView === 'wishlist'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20">
                     <button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
@@ -296,7 +308,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: TRANSLATOR (New Point 5) -->
+            <!-- VIEW: TRANSLATOR -->
             <div v-if="currentView === 'translator'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20">
                     <button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
@@ -312,21 +324,21 @@
             <div v-if="currentView === 'packing_list'" class="flex flex-col h-screen bg-main-bg"><div class="p-4 flex justify-between items-center bg-main-bg border-b-2 border-border sticky top-0 z-20"><button @click="currentView = 'dashboard'" class="w-10 h-10 bg-card-bg border-2 border-border shadow-hard-sm rounded-lg flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('packing') }}</h2><div class="w-10"></div></div><div class="p-4 flex-1 overflow-y-auto pb-24"><div class="flex gap-2 mb-4"><input v-model="newTodo" :placeholder="t('addItem')" class="flex-1 p-3 text-sm border-2 border-border rounded dark-input"><button @click="addTodo" class="w-12 bg-border text-white rounded font-bold text-xl shadow-hard-sm">+</button></div><div class="space-y-2"><div v-for="(todo, i) in (currentTrip.todos || [])" :key="i" class="flex items-center gap-3 p-3 bg-card-bg border-2 border-border rounded-xl shadow-sm"><input type="checkbox" v-model="todo.done" @change="syncUpdate" class="w-6 h-6 accent-accent border-2 border-border rounded"><span :class="{'opacity-30 line-through': todo.done}" class="font-bold flex-1 text-lg text-text-main">{{ todo.text }}</span><button @click="removeTodo(i)" class="text-red-500 w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-trash"></i></button></div></div></div></div>
 
             <!-- Modals -->
-            <!-- Point 2, 3: Inputs padding & Date placeholder -->
-            <div v-if="isModalOpen" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-6"><div class="bg-main-bg w-full max-w-sm p-6 rounded-2xl border-2 border-border shadow-hard space-y-4"><h2 class="text-2xl font-black uppercase text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="w-full dark-input"><div class="flex gap-2"><input type="text" placeholder="YYYY/MM/DD" onfocus="(this.type='date')" v-model="form.startDate" class="dark-input"><input type="text" placeholder="YYYY/MM/DD" onfocus="(this.type='date')" v-model="form.endDate" class="dark-input"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-card-bg border-2 border-border rounded text-text-main">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white border-2 border-border rounded shadow-hard">CREATE</button></div></div></div>
             
+            <!-- NEW TRIP MODAL (Fixed Date) -->
+            <div v-if="isModalOpen" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-6"><div class="bg-main-bg w-full max-w-sm p-6 rounded-2xl border-2 border-border shadow-hard space-y-4"><h2 class="text-2xl font-black uppercase text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="w-full dark-input"><div class="flex gap-2"><input type="date" required placeholder="YYYY/MM/DD" v-model="form.startDate" class="dark-input"><input type="date" required placeholder="YYYY/MM/DD" v-model="form.endDate" class="dark-input"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-card-bg border-2 border-border rounded text-text-main">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white border-2 border-border rounded shadow-hard">CREATE</button></div></div></div>
+            
+            <!-- SETTINGS MODAL -->
             <div v-if="showSettings" class="fixed inset-0 bg-main-bg z-50 p-6 flex flex-col">
                 <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-text-main">{{ t('settings') }}</h2><button @click="showSettings = false" class="font-bold text-xl text-text-main">X</button></div>
                 <div class="mb-6"><label class="block font-bold mb-2 text-text-main">{{ t('language') }}</label><div class="grid grid-cols-2 gap-2"><button @click="currentLang='zh-TW'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='zh-TW'?'bg-border text-white':'bg-card-bg text-text-main'">繁體中文</button><button @click="currentLang='en'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='en'?'bg-border text-white':'bg-card-bg text-text-main'">English</button><button @click="currentLang='ja'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='ja'?'bg-border text-white':'bg-card-bg text-text-main'">日本語</button><button @click="currentLang='ko'" class="py-3 border-2 border-border rounded font-bold" :class="currentLang==='ko'?'bg-border text-white':'bg-card-bg text-text-main'">한국어</button></div></div>
                 <div class="mb-6"><label class="block font-bold mb-2 text-text-main">THEME</label><div class="grid grid-cols-2 gap-3"><button v-for="(theme, key) in themes" :key="key" @click="applyTheme(key)" class="p-3 border-2 border-border rounded-lg text-xs font-bold flex items-center gap-2" :class="currentThemeKey === key ? 'bg-border text-white' : 'bg-card-bg text-text-main'"><div class="w-4 h-4 rounded-full border border-gray-400" :style="{backgroundColor: theme['--color-bg']}"></div>{{ theme.name }}</button></div></div>
             </div>
 
-            <!-- MODAL: FLIGHT (Point 9, 10, 11, 12) -->
+            <!-- MODAL: FLIGHT (Fixed Date) -->
             <div v-if="showFlightModal" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-4">
                 <div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[85vh] relative">
                     <div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('flights') }}</h3><button @click="showFlightModal=false" class="text-white font-bold">X</button></div>
-                    
-                    <!-- Horizontal Scrolling Boarding Passes -->
                     <div class="p-4 overflow-x-auto flex gap-4 scrollbar-hide snap-x">
                         <div v-for="(f, i) in (currentTrip.flights||[])" :key="i" class="flex-shrink-0 w-72 bg-white border-2 border-border rounded-2xl relative overflow-hidden snap-center shadow-md">
                             <div class="bg-accent h-2 w-full"></div>
@@ -345,7 +357,6 @@
                                     <span>{{ f.aircraft || 'Aircraft' }}</span>
                                 </div>
                             </div>
-                            <!-- Tear-off Section -->
                             <div class="relative bg-gray-50 p-3 border-t-2 border-dashed border-gray-300 flex justify-between items-center">
                                 <div class="absolute -left-2 -top-3 w-4 h-4 bg-card-bg rounded-full border-r-2 border-border"></div>
                                 <div class="absolute -right-2 -top-3 w-4 h-4 bg-card-bg rounded-full border-l-2 border-border"></div>
@@ -361,13 +372,12 @@
                         <div v-if="(!currentTrip.flights || currentTrip.flights.length===0)" class="w-full text-center text-gray-400 py-10 font-bold text-xs">No flights added. Add one below.</div>
                     </div>
 
-                    <!-- Add/Edit Flight Form -->
                     <div class="p-4 border-t-2 border-border bg-gray-50 overflow-y-auto flex-1">
                         <p class="text-xs font-bold text-accent mb-2 uppercase">{{ editingFlightIndex > -1 ? 'Edit Segment' : 'Add Segment' }}</p>
                         <div class="space-y-2">
                             <div class="flex gap-2"><input v-model="newFlight.airline" placeholder="Airline" class="text-xs"><input v-model="newFlight.code" placeholder="Flight No." class="text-xs"></div>
                             <div class="flex gap-2"><input v-model="newFlight.origin" placeholder="Origin (TPE)" class="text-xs"><input v-model="newFlight.dest" placeholder="Dest (NRT)" class="text-xs"></div>
-                            <div class="flex gap-2"><input type="text" placeholder="YYYY/MM/DD" onfocus="(this.type='date')" v-model="newFlight.date" class="text-xs"><input type="time" v-model="newFlight.time" class="text-xs"></div>
+                            <div class="flex gap-2"><input type="date" required placeholder="YYYY/MM/DD" v-model="newFlight.date" class="text-xs"><input type="time" v-model="newFlight.time" class="text-xs"></div>
                              <div class="flex gap-2"><input v-model="newFlight.arrTime" type="time" class="text-xs"><input v-model="newFlight.aircraft" placeholder="Aircraft (A320)" class="text-xs"></div>
                              <div class="flex gap-2"><input v-model="newFlight.baggage" placeholder="Bag (kg)" class="text-xs"><input v-model="newFlight.cost" placeholder="Cost" class="text-xs"></div>
                              <div class="relative w-full h-8 border border-dashed border-gray-400 rounded flex items-center justify-center cursor-pointer text-xs text-gray-500 hover:bg-white"><input type="file" @change="handleFlightFile" class="absolute inset-0 opacity-0 cursor-pointer"><span v-if="newFlight.file">File Attached (1)</span><span v-else><i class="fa-solid fa-paperclip"></i> Upload Ticket/Voucher</span></div>
@@ -377,7 +387,7 @@
                 </div>
             </div>
 
-            <!-- MODAL: HOTEL (Point 13) -->
+            <!-- MODAL: HOTEL (Fixed Date) -->
             <div v-if="showHotelModal" class="fixed inset-0 bg-border/90 z-50 flex items-center justify-center p-4">
                 <div class="bg-card-bg w-full max-w-sm rounded-2xl border-2 border-border shadow-hard flex flex-col max-h-[80vh]">
                     <div class="p-4 bg-secondary flex justify-between items-center border-b-2 border-border"><h3 class="font-black text-white">{{ t('hotels') }}</h3><button @click="showHotelModal=false" class="text-white font-bold">X</button></div>
@@ -404,9 +414,8 @@
                             <div class="space-y-2">
                                 <input v-model="newHotel.name" placeholder="Name" class="text-xs">
                                 <input v-model="newHotel.address" placeholder="Address" class="text-xs">
-                                <div class="flex gap-2"><input type="text" placeholder="Check-in" onfocus="(this.type='date')" v-model="newHotel.checkIn" class="text-xs"><input type="text" placeholder="Check-out" onfocus="(this.type='date')" v-model="newHotel.checkOut" class="text-xs"></div>
+                                <div class="flex gap-2"><input type="date" required placeholder="Check-in" v-model="newHotel.checkIn" class="text-xs"><input type="date" required placeholder="Check-out" v-model="newHotel.checkOut" class="text-xs"></div>
                                 <div class="flex gap-2"><input v-model="newHotel.cost" placeholder="Total Cost" class="text-xs"><div class="relative w-full border border-border rounded flex items-center justify-center bg-white cursor-pointer hover:bg-gray-50"><input type="file" @change="handleHotelPhoto" class="absolute inset-0 opacity-0 cursor-pointer"><span class="text-[10px] font-bold">{{ newHotel.photo ? 'Photo Added' : '+ Photo' }}</span></div></div>
-                                <!-- Splitters Logic -->
                                 <div class="text-xs font-bold">{{ t('splitWith') }}:</div>
                                 <div class="flex flex-wrap gap-2">
                                     <label v-for="m in (currentTrip.members || ['Me'])" :key="m" class="cursor-pointer"><input type="checkbox" :value="m" v-model="hotelSplitters" class="hidden cb-custom"><div class="px-2 py-1 border border-border rounded text-[10px] transition-colors">{{ m }}</div></label>
@@ -457,7 +466,6 @@
                 
                 // Edit States
                 const isEditMode = ref(false); const editingIndex = ref(-1); const editingFlightIndex = ref(-1); const editingHotelIndex = ref(-1);
-                // Updated Data Models (Point 9, 13)
                 const newFlight = ref({ airline: '', code:'', date:'', time:'', origin:'', dest:'', arrTime:'', aircraft:'', baggage:'', cost:'', file:null }); 
                 const newHotel = ref({ name:'', address:'', checkIn:'', checkOut:'', cost:'', photo:null }); const hotelSplitters = ref(['Me']);
                 const newMemberName = ref('');
