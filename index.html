@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v33 (Localized & Persisted)</title>
+    <title>Trip Planner v34 (City Codes & Center Text)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -87,7 +87,7 @@
             background: var(--input-bg); 
             color: var(--text-main); 
             border: 1px solid #D1D5DB; 
-            padding: 0.8rem 0.8rem 0.8rem 1.2rem; /* Left padding increased */
+            padding: 0.8rem 0.8rem 0.8rem 1.2rem; /* Left padding */
             border-radius: 0.75rem; 
             font-weight: 600; 
             outline: none; 
@@ -97,10 +97,14 @@
         }
         input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
         
+        /* Utility for Centering Placeholder & Text */
+        .input-center { text-align: center; padding-left: 0.8rem; }
+        .input-center::placeholder { text-align: center; }
+
         /* Date Input Placeholder Fix */
         input[type="date"] { -webkit-appearance: none; position: relative; min-height: 48px; line-height: 1.2; }
         input[type="date"]:invalid::-webkit-datetime-edit { color: transparent; }
-        input[type="date"]:invalid::before { content: "YYYY/MM/DD"; position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); color: #9CA3AF; pointer-events: none; }
+        input[type="date"]:invalid::before { content: "YYYY/MM/DD"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #9CA3AF; pointer-events: none; }
         input[type="date"]:focus::-webkit-datetime-edit, input[type="date"]:valid::-webkit-datetime-edit { color: var(--text-main) !important; }
         input[type="date"]:focus::before, input[type="date"]:valid::before { display: none; }
 
@@ -125,7 +129,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.3</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.4</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -161,7 +165,6 @@
                              <img v-if="trip.coverImage" :src="trip.coverImage" class="w-full h-full object-cover">
                              <div v-else class="w-full h-full flex items-center justify-center text-gray-300"><i class="fa-solid fa-mountain-sun text-5xl"></i></div>
                              <div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">{{ getDays(trip.startDate, trip.endDate) }} DAYS</div>
-                             <!-- Cover Upload Button -->
                              <label class="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm cursor-pointer active:scale-90" @click.stop>
                                 <input type="file" accept="image/*" class="hidden" @change="(e) => updateTripCover(trip, e)">
                                 <i class="fa-solid fa-camera text-gray-500"></i>
@@ -207,11 +210,11 @@
                 <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
                     <div v-if="!currentTrip.flights || currentTrip.flights.length === 0" class="text-center text-gray-400 font-bold mt-10 opacity-50">{{ t('noFlights') }}</div>
                     
-                    <!-- Flight Card (Boarding Pass Style) -->
+                    <!-- Flight Card -->
                     <div v-for="(f, i) in (currentTrip.flights||[])" :key="i" @click="openFlightDetail(f, i)" class="bg-white rounded-3xl overflow-hidden shadow-soft cursor-pointer active:scale-[0.99] transition-transform relative border border-gray-100">
                         <div class="bg-accent-light/30 p-4 border-b border-gray-100 flex justify-between items-center">
                             <span class="font-bold text-gray-500 text-xs tracking-widest uppercase">{{ f.airline || t('airline') }}</span>
-                            <span class="bg-white px-2 py-1 rounded-md text-xs font-black text-text-main shadow-sm">{{ t('oneTicket') }}</span>
+                            <span class="bg-white/50 w-8 h-8 rounded-full flex items-center justify-center text-accent"><i class="fa-solid fa-pen text-xs"></i></span>
                         </div>
                         <div class="p-6">
                             <div class="text-center mb-6">
@@ -276,7 +279,14 @@
             <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('budget') }}</h2><div class="w-10"></div></div>
                 <div class="p-4 overflow-y-auto pb-24 space-y-4">
-                    <div class="bg-text-main text-white p-6 rounded-3xl shadow-lg text-center"><p class="text-xs font-bold opacity-70 mb-1">{{ t('totalExpense') }} (TWD)</p><p class="text-4xl font-black">NT$ {{ totalExpense }}</p></div>
+                    <div class="bg-text-main text-white p-6 rounded-3xl shadow-lg text-center">
+                        <p class="text-xs font-bold opacity-70 mb-1">{{ t('totalExpense') }} (TWD)</p>
+                        <p class="text-4xl font-black mb-2">NT$ {{ totalExpense }}</p>
+                        <!-- Grouped Totals Display -->
+                        <div v-if="Object.keys(groupedTotals).length > 0" class="border-t border-white/20 pt-2 flex flex-wrap justify-center gap-2">
+                            <span v-for="(amount, curr) in groupedTotals" :key="curr" class="text-xs font-bold bg-white/20 px-2 py-1 rounded">{{ curr }} Total: {{ amount }}</span>
+                        </div>
+                    </div>
                     <div class="bg-white rounded-2xl p-4 shadow-soft">
                         <h3 class="font-bold text-sm mb-3 text-gray-400">{{ t('members') }}</h3>
                         <div class="flex gap-2 mb-3"><input v-model="newMemberName" :placeholder="t('name')" class="flex-1 bg-gray-50 border-none text-sm"><button @click="addMember" class="bg-gray-200 w-10 rounded-xl font-bold">+</button></div>
@@ -334,7 +344,7 @@
             <div v-if="['packing_list', 'wishlist'].includes(currentView)" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main uppercase">{{ t(currentView === 'packing_list' ? 'packing' : 'wishlist') }}</h2><div class="w-10"></div></div>
                 <div class="p-4 flex-1 overflow-y-auto pb-24">
-                    <div class="flex gap-2 mb-4"><input v-model="genericInput" :placeholder="t('enterItem')" class="flex-1 bg-white shadow-sm border-none"><button @click="addGenericItem" class="w-12 bg-accent text-white rounded-xl shadow-lg text-xl">+</button></div>
+                    <div class="flex gap-2 mb-4"><input v-model="genericInput" :placeholder="t('enterItem')" class="flex-1 bg-white shadow-sm border-none input-center"><button @click="addGenericItem" class="w-12 bg-accent text-white rounded-xl shadow-lg text-xl">+</button></div>
                     <div class="space-y-2">
                         <div v-for="(item, i) in getGenericList()" :key="i" class="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm">
                             <input type="checkbox" v-model="item.done" @change="syncUpdate" class="w-5 h-5 accent-accent rounded">
@@ -346,14 +356,14 @@
             </div>
 
             <!-- MODAL: ADD TRIP -->
-            <div v-if="isModalOpen" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm"><div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4"><h2 class="text-2xl font-black text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="bg-gray-50 border-none"><div class="flex gap-2"><input type="date" required v-model="form.startDate" class="bg-gray-50 border-none"><input type="date" required v-model="form.endDate" class="bg-gray-50 border-none"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">CREATE</button></div></div></div>
+            <div v-if="isModalOpen" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm"><div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4"><h2 class="text-2xl font-black text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="bg-gray-50 border-none input-center"><div class="flex gap-2"><input type="date" required v-model="form.startDate" class="bg-gray-50 border-none"><input type="date" required v-model="form.endDate" class="bg-gray-50 border-none"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">CREATE</button></div></div></div>
             
             <!-- MODAL: ADD SIMPLE FLIGHT (Floating) -->
             <div v-if="showAddFlightModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
                 <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4">
                     <h2 class="text-xl font-black text-center text-text-main">{{ t('addFlight') }}</h2>
-                    <input v-model="simpleFlight.airline" :placeholder="t('airline')" class="bg-gray-50 border-none">
-                    <input v-model="simpleFlight.code" :placeholder="t('flightNo')" class="bg-gray-50 border-none uppercase">
+                    <input v-model="simpleFlight.airline" :placeholder="t('airline')" class="bg-gray-50 border-none input-center">
+                    <input v-model="simpleFlight.code" :placeholder="t('flightNo')" class="bg-gray-50 border-none uppercase input-center">
                     <div class="flex gap-2"><input type="date" v-model="simpleFlight.date" class="bg-gray-50 border-none"><input type="time" v-model="simpleFlight.time" class="bg-gray-50 border-none"></div>
                     <div class="flex gap-2 pt-2">
                         <button @click="showAddFlightModal = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button>
@@ -362,7 +372,7 @@
                 </div>
             </div>
 
-            <!-- MODAL: EDIT FLIGHT DETAIL (Full Edit) -->
+            <!-- MODAL: EDIT FLIGHT DETAIL (Full Edit, City to Code) -->
             <div v-if="showEditFlightModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                 <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
                     <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -376,13 +386,9 @@
                             <span class="font-bold text-xs">{{ editFlightData.airline }}</span>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('originCode') }}</label><input v-model="editFlightData.origin" placeholder="KHH" class="uppercase text-center text-lg bg-gray-50 border-none"></div>
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('destCode') }}</label><input v-model="editFlightData.dest" placeholder="PUS" class="uppercase text-center text-lg bg-gray-50 border-none"></div>
-                        </div>
                          <div class="grid grid-cols-2 gap-4">
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('originCity') }}</label><input v-model="editFlightData.originCity" placeholder="Kaohsiung" class="text-center bg-gray-50 border-none"></div>
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('destCity') }}</label><input v-model="editFlightData.destCity" placeholder="Busan" class="text-center bg-gray-50 border-none"></div>
+                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('originCity') }}</label><input v-model="editFlightData.originCity" placeholder="Taipei" class="text-center bg-gray-50 border-none"></div>
+                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('destCity') }}</label><input v-model="editFlightData.destCity" placeholder="Osaka" class="text-center bg-gray-50 border-none"></div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div><label class="text-[10px] font-bold text-gray-400">{{ t('depTime') }}</label><input type="time" v-model="editFlightData.time" class="bg-gray-50 border-none"></div>
@@ -424,8 +430,8 @@
                             <div class="text-right"><div class="text-gray-400 text-xs font-bold">{{ calcInput || '0' }} {{ calcCurrency }}</div><div class="text-3xl font-black text-text-main">NT$ {{ calculateTWD }}</div></div>
                         </div>
                         <div class="bg-white p-3 rounded-xl shadow-sm mb-4 border border-gray-100 text-xs">
-                            <div class="flex justify-between items-center mb-2"><span class="font-bold text-gray-400">PAYER</span><select v-model="expensePayer" class="w-24 py-1 bg-accent text-white font-bold rounded-lg text-center border-none"><option v-for="m in (currentTrip.members || ['Me'])" :key="m" :value="m">{{ m }}</option></select></div>
-                            <div class="mb-1 font-bold text-gray-400">SPLIT</div><div class="flex flex-wrap gap-2"><label v-for="m in (currentTrip.members || ['Me'])" :key="m" class="cursor-pointer bg-gray-100 px-2 py-1 rounded-md flex items-center gap-1"><input type="checkbox" :value="m" v-model="expenseSplitters" class="w-3 h-3 accent-accent"> {{ m }}</label></div>
+                            <div class="flex justify-between items-center mb-2"><span class="font-bold text-gray-400">{{ t('payer') }}</span><select v-model="expensePayer" class="w-24 py-1 bg-accent text-white font-bold rounded-lg text-center border-none"><option v-for="m in (currentTrip.members || ['Me'])" :key="m" :value="m">{{ m }}</option></select></div>
+                            <div class="mb-1 font-bold text-gray-400">{{ t('split') }}</div><div class="flex flex-wrap gap-2"><label v-for="m in (currentTrip.members || ['Me'])" :key="m" class="cursor-pointer bg-gray-100 px-2 py-1 rounded-md flex items-center gap-1"><input type="checkbox" :value="m" v-model="expenseSplitters" class="w-3 h-3 accent-accent"> {{ m }}</label></div>
                         </div>
                         <div class="grid grid-cols-4 gap-2"><button v-for="btn in ['7','8','9','DEL','4','5','6','C','1','2','3','.','00','0']" :key="btn" @click="handleCalc(btn)" class="h-14 bg-white text-xl font-bold rounded-xl shadow-sm active:bg-gray-100" :class="{'text-red-400': btn==='DEL' || btn==='C'}">{{ btn }}</button><button @click="saveExpense" class="col-span-2 h-14 bg-accent text-white text-xl font-bold rounded-xl shadow-lg active:scale-95">SAVE</button></div>
                     </div>
@@ -439,7 +445,7 @@
                     <div class="p-4 space-y-4 overflow-y-auto">
                         <div class="bg-white p-4 rounded-2xl shadow-soft">
                             <p class="text-xs font-bold text-accent mb-2">{{ t('addHotel') }}</p>
-                            <input v-model="newHotel.name" :placeholder="t('hotelName')" class="mb-2 bg-gray-50 border-none text-sm"><input v-model="newHotel.address" :placeholder="t('hotelAddr')" class="mb-2 bg-gray-50 border-none text-sm">
+                            <input v-model="newHotel.name" :placeholder="t('hotelName')" class="mb-2 bg-gray-50 border-none text-sm input-center"><input v-model="newHotel.address" :placeholder="t('hotelAddr')" class="mb-2 bg-gray-50 border-none text-sm input-center">
                             <div class="flex gap-2 mb-2"><input type="date" required v-model="newHotel.checkIn" class="bg-gray-50 border-none text-sm"><input type="date" required v-model="newHotel.checkOut" class="bg-gray-50 border-none text-sm"></div>
                             <button @click="addHotel" class="w-full bg-accent text-white font-bold py-3 rounded-xl shadow-lg">ADD</button>
                         </div>
@@ -457,13 +463,24 @@
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
         const i18n = {
-            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', wishlist:'許願清單', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF' },
-            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', wishlist:'WISHLIST', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF' },
-            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', wishlist:'ほしい物', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ', oneTicket:'同一予約', bagagge:'荷物', aircraft:'機材', price:'価格', direct:'直行便', date:'日付', editFlightDetails:'フライト編集', done:'完了', originCode:'出発コード', destCode:'到着コード', originCity:'出発都市', destCity:'到着都市', depTime:'出発時刻', arrTime:'到着時刻', baggage:'荷物', totalCost:'合計金額', deleteFlight:'フライト削除', noFlights:'フライトなし', editNote:'メモ編集', fileReady:'準備完了', viewImg:'画像表示', openPdf:'PDFを開く' },
-            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', wishlist:'위시리스트', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모', oneTicket:'동일 예약', bagagge:'수하물', aircraft:'기종', price:'가격', direct:'직항', date:'날짜', editFlightDetails:'항공편 편집', done:'완료', originCode:'출발 코드', destCode:'도착 코드', originCity:'출발 도시', destCity:'도착 도시', depTime:'출발 시간', arrTime:'도착 시간', baggage:'수하물', totalCost:'총 비용', deleteFlight:'항공편 삭제', noFlights:'항공편 없음', editNote:'메모 편집', fileReady:'파일 준비됨', viewImg:'이미지 보기', openPdf:'PDF 열기' }
+            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', wishlist:'許願清單', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳' },
+            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', wishlist:'WISHLIST', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split' },
+            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', wishlist:'ほしい物', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ', oneTicket:'同一予約', bagagge:'荷物', aircraft:'機材', price:'価格', direct:'直行便', date:'日付', editFlightDetails:'フライト編集', done:'完了', originCity:'出発都市', destCity:'到着都市', depTime:'出発時刻', arrTime:'到着時刻', baggage:'荷物', totalCost:'合計金額', deleteFlight:'フライト削除', noFlights:'フライトなし', editNote:'メモ編集', fileReady:'準備完了', viewImg:'画像表示', openPdf:'PDFを開く', payer:'支払者', split:'割り勘' },
+            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', wishlist:'위시리스트', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모', oneTicket:'동일 예약', bagagge:'수하물', aircraft:'기종', price:'가격', direct:'직항', date:'날짜', editFlightDetails:'항공편 편집', done:'완료', originCity:'출발 도시', destCity:'도착 도시', depTime:'출발 시간', arrTime:'도착 시간', baggage:'수하물', totalCost:'총 비용', deleteFlight:'항공편 삭제', noFlights:'항공편 없음', editNote:'메모 편집', fileReady:'파일 준비됨', viewImg:'이미지 보기', openPdf:'PDF 열기', payer:'결제자', split:'분할' }
         };
         const langNames = { 'zh-TW':'繁體中文', 'en':'English', 'ja':'日本語', 'ko':'한국어' };
         const themeConfig = { classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' }, postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } };
+
+        // City to Airport Code Mapping
+        const cityToCodeMap = {
+            'taipei': 'TPE', 'kaohsiung': 'KHH', 'taichung': 'RMQ', 'tokyo': 'NRT', 'osaka': 'KIX', 'fukuoka': 'FUK', 'sapporo': 'CTS', 'okinawa': 'OKA', 'seoul': 'ICN', 'busan': 'PUS', 'jeju': 'CJU', 'daegu': 'TAE', 'bangkok': 'BKK', 'chiang mai': 'CNX', 'singapore': 'SIN', 'kuala lumpur': 'KUL', 'ho chi minh': 'SGN', 'hanoi': 'HAN', 'hong kong': 'HKG', 'macau': 'MFM', 'manila': 'MNL', 'cebu': 'CEB', 'los angeles': 'LAX', 'new york': 'JFK', 'san francisco': 'SFO', 'london': 'LHR', 'paris': 'CDG', 'sydney': 'SYD', 'melbourne': 'MEL'
+        };
+        const getAirportCode = (city) => {
+            if(!city) return '';
+            const lower = city.toLowerCase().trim();
+            if(cityToCodeMap[lower]) return cityToCodeMap[lower];
+            return city.substring(0,3).toUpperCase(); // Fallback
+        };
 
         createApp({
             setup() {
@@ -526,16 +543,25 @@
                 const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
                 const updateTripCover = async (trip, e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = async (ev) => { const i = new Image(); i.onload = async () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); const b64 = c.toDataURL('image/jpeg',0.6); await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", trip.id), { coverImage: b64 }); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
 
-                // Flights (Updated Logic)
+                // Flights (Updated Logic with City Code)
                 const addSimpleFlight = () => {
                     if(!currentTrip.value.flights) currentTrip.value.flights = [];
-                    currentTrip.value.flights.push({ ...simpleFlight.value, origin:'', dest:'', arrTime:'', baggage:'', aircraft:'', cost:'' });
+                    currentTrip.value.flights.push({ ...simpleFlight.value, origin:'', dest:'', originCity:'', destCity:'', arrTime:'', baggage:'', aircraft:'', cost:'' });
                     simpleFlight.value = { code:'', airline:'', date:'', time:'' };
                     showAddFlightModal.value = false;
                     syncUpdate();
                 };
                 const openFlightDetail = (f, i) => { editFlightData.value = { ...f }; editFlightIndex.value = i; showEditFlightModal.value = true; };
-                const saveFlightDetail = () => { if(editFlightIndex.value > -1) { currentTrip.value.flights[editFlightIndex.value] = { ...editFlightData.value }; syncUpdate(); } showEditFlightModal.value = false; };
+                const saveFlightDetail = () => { 
+                    if(editFlightIndex.value > -1) { 
+                        // Auto-generate codes from cities
+                        if(editFlightData.value.originCity) editFlightData.value.origin = getAirportCode(editFlightData.value.originCity);
+                        if(editFlightData.value.destCity) editFlightData.value.dest = getAirportCode(editFlightData.value.destCity);
+                        currentTrip.value.flights[editFlightIndex.value] = { ...editFlightData.value }; 
+                        syncUpdate(); 
+                    } 
+                    showEditFlightModal.value = false; 
+                };
                 const deleteCurrentFlight = () => { currentTrip.value.flights.splice(editFlightIndex.value, 1); syncUpdate(); showEditFlightModal.value = false; };
 
                 const addHotel = () => { if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; currentTrip.value.hotels.push({...newHotel.value}); newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; syncUpdate(); };
@@ -556,6 +582,7 @@
                 const deleteItem = (i) => { currentTrip.value.itinerary[selectedDate.value].splice(i,1); syncUpdate(); };
                 const changeToItinerary = async () => { currentView.value='itinerary'; await nextTick(); new Sortable(document.getElementById('sortable-list'), { animation:150, ghostClass:'sortable-ghost', handle:'.group', onEnd:(e)=>{ const l = currentTrip.value.itinerary[selectedDate.value]; l.splice(e.newIndex, 0, l.splice(e.oldIndex, 1)[0]); syncUpdate(); }}); };
                 const totalExpense = computed(() => (currentTrip.value.expenses||[]).reduce((a,b)=>a+b.twd,0));
+                const groupedTotals = computed(() => { const g={}; (currentTrip.value.expenses||[]).forEach(e=>{ if(e.currency && e.currency!=='TWD') g[e.currency]=(g[e.currency]||0)+parseFloat(e.original); }); return g; });
                 const handleCalc = (b) => { if(b==='C')calcInput.value=''; else if(b==='DEL')calcInput.value=calcInput.value.slice(0,-1); else calcInput.value+=b; };
                 const calculateTWD = computed(() => Math.round((parseFloat(calcInput.value)||0) * (rates[calcCurrency.value] || 1)));
                 const saveExpense = () => { if(!currentTrip.value.expenses) currentTrip.value.expenses=[]; currentTrip.value.expenses.push({ note:expenseNote.value||'Gen', twd:calculateTWD.value, original:calcInput.value, currency:calcCurrency.value, payer:expensePayer.value, splitters:[...expenseSplitters.value] }); syncUpdate(); showCalculator.value=false; calcInput.value=''; };
@@ -576,10 +603,10 @@
                     form, newItem, openNewTripModal, createCloudTrip, deleteTrip, openTrip, backToHome, copyId, getDays, formatDate, joinTrip, updateTripCover,
                     tripDates, getDayItems, saveItem, deleteItem, changeToItinerary,
                     simpleFlight, addSimpleFlight, 
-                    showAddFlightModal, showEditFlightModal, editFlightData, openFlightDetail, saveFlightDetail, deleteCurrentFlight,
+                    showAddFlightModal, showEditFlightModal, editFlightData, openFlightDetail, saveFlightDetail, deleteCurrentFlight, getAirportCode,
                     newVoucher, handleVoucherFile, saveVoucher, editVoucher, cancelEditVoucher, removeVoucher, openFile, isEditingVoucher,
                     newHotel, addHotel, removeHotel,
-                    totalExpense, handleCalc, calcInput, calcCurrency, calculateTWD, expenseNote, expensePayer, expenseSplitters, saveExpense, deleteExpense, newMemberName, addMember, removeMember,
+                    totalExpense, groupedTotals, handleCalc, calcInput, calcCurrency, calculateTWD, expenseNote, expensePayer, expenseSplitters, saveExpense, deleteExpense, newMemberName, addMember, removeMember,
                     genericInput, getGenericList, addGenericItem, removeGenericItem, syncUpdate,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt + ' ' + currentTrip.value.destination)}`),
