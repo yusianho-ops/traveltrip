@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v31 (Themes & PDF)</title>
+    <title>Trip Planner v32 (Pro Flight UI)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -83,13 +83,19 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; } 
         input, select, textarea { background: var(--input-bg); color: var(--text-main); border: 1px solid #D1D5DB; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; outline: none; transition: all 0.2s; width: 100%; font-size: 15px !important; }
         input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+        
+        /* Date Input Placeholder Fix */
+        input[type="date"] { -webkit-appearance: none; position: relative; min-height: 48px; line-height: 1.2; }
+        input[type="date"]:invalid::-webkit-datetime-edit { color: transparent; }
+        input[type="date"]:invalid::before { content: "YYYY/MM/DD"; position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: #9CA3AF; pointer-events: none; }
+        input[type="date"]:focus::-webkit-datetime-edit, input[type="date"]:valid::-webkit-datetime-edit { color: var(--text-main) !important; }
+        input[type="date"]:focus::before, input[type="date"]:valid::before { display: none; }
+
         .sortable-ghost { opacity: 0.4; background: var(--accent-light); }
         #draggable-btn { position: fixed; z-index: 9999; touch-action: none; transition: transform 0.1s; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         #app-loading { position: fixed; inset: 0; background: var(--main-bg); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; font-weight: 900; color: #374151; transition: opacity 0.5s; }
         .hidden-load { opacity: 0; pointer-events: none; }
         [v-cloak] { display: none; }
-        
-        /* Theme Transition */
         button, .bg-accent { transition: background-color 0.3s ease, color 0.3s ease; }
     </style>
 </head>
@@ -106,7 +112,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.1</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.2</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -139,8 +145,14 @@
                     <div v-else-if="trips.length === 0" class="text-center mt-10 font-bold text-gray-400">{{ t('noTrips') }}</div>
                     <div v-for="trip in trips" :key="trip.id" @click="openTrip(trip)" class="bg-white rounded-2xl overflow-hidden shadow-soft cursor-pointer active:scale-[0.98] transition-transform relative group">
                         <div class="h-36 relative bg-gray-200">
-                             <div class="w-full h-full flex items-center justify-center text-gray-300"><i class="fa-solid fa-mountain-sun text-5xl"></i></div>
+                             <img v-if="trip.coverImage" :src="trip.coverImage" class="w-full h-full object-cover">
+                             <div v-else class="w-full h-full flex items-center justify-center text-gray-300"><i class="fa-solid fa-mountain-sun text-5xl"></i></div>
                              <div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">{{ getDays(trip.startDate, trip.endDate) }} DAYS</div>
+                             <!-- Cover Upload Button -->
+                             <label class="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm cursor-pointer active:scale-90" @click.stop>
+                                <input type="file" accept="image/*" class="hidden" @change="(e) => updateTripCover(trip, e)">
+                                <i class="fa-solid fa-camera text-gray-500"></i>
+                             </label>
                         </div>
                         <div class="p-4 flex justify-between items-center">
                             <div><h2 class="text-lg font-black text-text-main leading-tight">{{ trip.destination }}</h2><p class="font-bold text-gray-400 text-xs mt-1">{{ formatDate(trip.startDate) }}</p></div>
@@ -164,10 +176,58 @@
                         <div @click="changeToItinerary" class="col-span-2 bg-text-main rounded-2xl h-32 flex flex-col justify-center items-center cursor-pointer active:scale-[0.98] relative overflow-hidden shadow-lg"><i class="fa-solid fa-map-location-dot text-7xl text-white opacity-10 absolute -right-2 -bottom-4"></i><h3 class="text-2xl font-black text-white z-10 tracking-widest">{{ t('itinerary') }}</h3></div>
                         <div @click="openTool('budget')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-wallet text-2xl mb-1 text-accent"></i><span class="font-bold text-xs text-text-main">{{ t('budget') }}</span></div>
                         <div @click="openTool('packing')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-suitcase text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('packing') }}</span></div>
-                        <div @click="showFlightModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer border border-transparent hover:border-accent transition-colors"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('flights') }}</span></div>
+                        <div @click="currentView = 'flights'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer border border-transparent hover:border-accent transition-colors"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('flights') }}</span></div>
                         <div @click="showHotelModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('hotels') }}</span></div>
                         <div @click="openTool('wishlist')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-heart text-2xl mb-1 text-red-400"></i><span class="font-bold text-xs text-text-main">{{ t('wishlist') }}</span></div>
                         <div @click="openTool('vouchers')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-ticket text-2xl mb-1 text-orange-400"></i><span class="font-bold text-xs text-text-main">{{ t('vouchers') }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: FLIGHTS (Full Page) -->
+            <div v-if="currentView === 'flights'" class="flex flex-col h-screen bg-main-bg">
+                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
+                    <button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h2 class="font-black text-xl text-text-main">{{ t('flights') }}</h2>
+                    <button @click="showAddFlightModal=true" class="w-10 h-10 flex items-center justify-center text-accent active:scale-90"><i class="fa-solid fa-plus text-xl"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+                    <div v-if="!currentTrip.flights || currentTrip.flights.length === 0" class="text-center text-gray-400 font-bold mt-10 opacity-50">NO FLIGHTS ADDED</div>
+                    
+                    <!-- Flight Card (Boarding Pass Style) -->
+                    <div v-for="(f, i) in (currentTrip.flights||[])" :key="i" @click="openFlightDetail(f, i)" class="bg-white rounded-3xl overflow-hidden shadow-soft cursor-pointer active:scale-[0.99] transition-transform relative border border-gray-100">
+                        <div class="bg-accent-light/30 p-4 border-b border-gray-100 flex justify-between items-center">
+                            <span class="font-bold text-gray-500 text-xs tracking-widest uppercase">{{ f.airline || 'AIRLINE' }}</span>
+                            <span class="bg-white px-2 py-1 rounded-md text-xs font-black text-text-main shadow-sm">{{ t('oneTicket') }}</span>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl font-black text-text-main tracking-tight">{{ f.code || 'FLT' }}</div>
+                            </div>
+                            <div class="flex justify-between items-center mb-6 px-2">
+                                <div class="text-center">
+                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.origin || 'DEP' }}</div>
+                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.time || '--:--' }}</div>
+                                    <div class="mt-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full inline-block">{{ f.originCity || 'Origin' }}</div>
+                                </div>
+                                <div class="flex-1 flex flex-col items-center px-4 relative -top-3">
+                                    <div class="text-[10px] text-gray-400 font-bold mb-1">Direct</div>
+                                    <div class="w-full h-0.5 bg-gray-200 relative"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
+                                    <div class="text-[10px] text-gray-400 font-bold mt-1">{{ formatDate(f.date) }}</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.dest || 'ARR' }}</div>
+                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.arrTime || '--:--' }}</div>
+                                    <div class="mt-1 px-2 py-0.5 bg-orange-400 text-white text-[10px] font-bold rounded-full inline-block">{{ f.destCity || 'Dest' }}</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 border-t border-dashed border-gray-200 pt-4">
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">BAGGAGE</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-suitcase text-sm text-accent"></i> {{ f.baggage || '-' }}</div></div>
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AIRCRAFT</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-plane text-sm text-accent"></i> {{ f.aircraft || '-' }}</div></div>
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PRICE</div><div class="font-black text-lg text-text-main">NT${{ f.cost || '-' }}</div></div>
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">DATE</div><div class="font-black text-lg text-text-main">{{ formatDate(f.date) }}</div></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -219,27 +279,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: FLIGHTS -->
-            <div v-if="showFlightModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div class="bg-main-bg w-full max-w-sm rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-                    <div class="p-4 bg-white flex justify-between items-center border-b border-gray-100"><h3 class="font-black text-lg">{{ t('flights') }}</h3><button @click="showFlightModal=false" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">✕</button></div>
-                    <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                        <div class="bg-white p-4 rounded-2xl shadow-soft">
-                            <p class="text-xs font-bold text-accent mb-2 tracking-wide">{{ t('addFlight') }}</p>
-                            <div class="flex gap-2 mb-2"><input v-model="simpleFlight.code" :placeholder="t('flightNo')" class="bg-gray-50 border-none text-sm uppercase"><input v-model="simpleFlight.airline" :placeholder="t('airline')" class="bg-gray-50 border-none text-sm"></div>
-                            <div class="flex gap-2 mb-2"><input type="date" required v-model="simpleFlight.date" class="bg-gray-50 border-none text-sm"><input type="time" v-model="simpleFlight.time" class="bg-gray-50 border-none text-sm"></div>
-                            <button @click="addSimpleFlight" class="w-full bg-accent text-white font-bold py-3 rounded-xl shadow-lg">ADD</button>
-                        </div>
-                        <div v-for="(f, i) in (currentTrip.flights||[])" :key="i" class="bg-white rounded-3xl overflow-hidden shadow-soft p-5 relative">
-                             <div class="flex justify-between items-start mb-4"><div class="text-xs font-bold text-gray-400 uppercase">{{ f.airline || 'AIRLINE' }}</div><button @click="removeFlight(i)" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div>
-                             <div class="flex justify-between items-center"><div class="text-3xl font-black text-text-main">{{ f.code || 'FLT' }}</div><div class="text-sm font-bold text-accent">{{ f.time || '--:--' }}</div></div>
-                             <div class="text-xs font-bold text-gray-400 mt-2">{{ formatDate(f.date) }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: VOUCHERS (PDF & Edit Enabled) -->
+            <!-- VIEW: VOUCHERS -->
             <div v-if="currentView === 'vouchers'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('vouchers') }}</h2><div class="w-10"></div></div>
                 <div class="p-4 flex-1 overflow-y-auto pb-24">
@@ -292,14 +332,61 @@
                 </div>
             </div>
 
-            <!-- MODALS -->
+            <!-- MODAL: ADD TRIP -->
             <div v-if="isModalOpen" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm"><div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4"><h2 class="text-2xl font-black text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="bg-gray-50 border-none"><div class="flex gap-2"><input type="date" required v-model="form.startDate" class="bg-gray-50 border-none"><input type="date" required v-model="form.endDate" class="bg-gray-50 border-none"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">CREATE</button></div></div></div>
             
+            <!-- MODAL: ADD SIMPLE FLIGHT (Floating) -->
+            <div v-if="showAddFlightModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
+                <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4">
+                    <h2 class="text-xl font-black text-center text-text-main">{{ t('addFlight') }}</h2>
+                    <input v-model="simpleFlight.airline" :placeholder="t('airline')" class="bg-gray-50 border-none">
+                    <input v-model="simpleFlight.code" :placeholder="t('flightNo')" class="bg-gray-50 border-none uppercase">
+                    <div class="flex gap-2"><input type="date" v-model="simpleFlight.date" class="bg-gray-50 border-none"><input type="time" v-model="simpleFlight.time" class="bg-gray-50 border-none"></div>
+                    <div class="flex gap-2 pt-2">
+                        <button @click="showAddFlightModal = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button>
+                        <button @click="addSimpleFlight" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">ADD</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: EDIT FLIGHT DETAIL (Full Edit) -->
+            <div v-if="showEditFlightModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <span class="font-black text-text-main">EDIT FLIGHT DETAILS</span>
+                        <button @click="saveFlightDetail" class="text-accent font-bold">DONE</button>
+                    </div>
+                    <div class="p-6 overflow-y-auto space-y-4">
+                        <!-- Preview Header -->
+                        <div class="flex justify-between items-center mb-4 opacity-50">
+                            <span class="font-bold">{{ editFlightData.code }}</span>
+                            <span class="font-bold text-xs">{{ editFlightData.airline }}</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[10px] font-bold text-gray-400">ORIGIN (Code)</label><input v-model="editFlightData.origin" placeholder="KHH" class="uppercase text-center text-lg bg-gray-50 border-none"></div>
+                            <div><label class="text-[10px] font-bold text-gray-400">DEST (Code)</label><input v-model="editFlightData.dest" placeholder="PUS" class="uppercase text-center text-lg bg-gray-50 border-none"></div>
+                        </div>
+                         <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[10px] font-bold text-gray-400">ORIGIN (City)</label><input v-model="editFlightData.originCity" placeholder="Kaohsiung" class="text-center bg-gray-50 border-none"></div>
+                            <div><label class="text-[10px] font-bold text-gray-400">DEST (City)</label><input v-model="editFlightData.destCity" placeholder="Busan" class="text-center bg-gray-50 border-none"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[10px] font-bold text-gray-400">DEP TIME</label><input type="time" v-model="editFlightData.time" class="bg-gray-50 border-none"></div>
+                            <div><label class="text-[10px] font-bold text-gray-400">ARR TIME</label><input type="time" v-model="editFlightData.arrTime" class="bg-gray-50 border-none"></div>
+                        </div>
+                        <div><label class="text-[10px] font-bold text-gray-400">BAGGAGE</label><input v-model="editFlightData.baggage" placeholder="15kg" class="bg-gray-50 border-none"></div>
+                        <div><label class="text-[10px] font-bold text-gray-400">AIRCRAFT</label><input v-model="editFlightData.aircraft" placeholder="A321" class="bg-gray-50 border-none"></div>
+                        <div><label class="text-[10px] font-bold text-gray-400">TOTAL COST</label><input v-model="editFlightData.cost" placeholder="4633" class="bg-gray-50 border-none font-black text-lg"></div>
+                        
+                        <button @click="deleteCurrentFlight" class="w-full py-3 text-red-500 font-bold border-2 border-red-50 rounded-xl mt-6">Delete Flight</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- SETTINGS: THEMES & LANGUAGE -->
             <div v-if="showSettings" class="fixed inset-0 bg-white z-50 p-6 flex flex-col">
                 <div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-black text-text-main">{{ t('settings') }}</h2><button @click="showSettings = false" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold">✕</button></div>
-                
-                <!-- Color Theme Selector -->
                 <div class="mb-8">
                     <label class="block font-bold mb-3 text-gray-400 text-sm tracking-wider">THEME</label>
                     <div class="grid grid-cols-5 gap-2">
@@ -311,7 +398,6 @@
                     </div>
                     <div class="text-center mt-2 font-bold text-xs text-text-main uppercase">{{ currentTheme }}</div>
                 </div>
-
                 <div class="mb-8"><label class="block font-bold mb-3 text-gray-400 text-sm tracking-wider">LANGUAGE</label><div class="grid grid-cols-2 gap-3"><button v-for="lang in ['zh-TW','en','ja','ko']" :key="lang" @click="currentLang=lang" class="py-4 rounded-2xl font-bold border-2 transition-all" :class="currentLang===lang?'border-accent text-accent bg-accent-light':'border-gray-100 text-gray-400'">{{ langNames[lang] }}</button></div></div>
             </div>
 
@@ -358,28 +444,20 @@
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
         const i18n = {
-            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', wishlist:'許願清單', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號' },
-            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', wishlist:'WISHLIST', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID' },
-            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', wishlist:'ほしい物', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ' },
-            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', wishlist:'위시리스트', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모' }
+            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', wishlist:'許願清單', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單' },
+            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', wishlist:'WISHLIST', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket' },
+            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', wishlist:'ほしい物', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ', oneTicket:'同一予約' },
+            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', wishlist:'위시리스트', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모', oneTicket:'동일 예약' }
         };
         const langNames = { 'zh-TW':'繁體中文', 'en':'English', 'ja':'日本語', 'ko':'한국어' };
-
-        // Themes Config
-        const themeConfig = {
-            classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' },
-            postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, // Postcard Cream
-            dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, // Dune Peach
-            seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, // Seafoam Bloom
-            saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } // Saffron Fire
-        };
+        const themeConfig = { classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' }, postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } };
 
         createApp({
             setup() {
                 const user = ref(null); const trips = ref([]); const currentTrip = ref({});
                 const currentView = ref('home'); const loading = ref(false);
                 const isModalOpen = ref(false); const showSettings = ref(false);
-                const showCalculator = ref(false); const showFlightModal = ref(false); const showHotelModal = ref(false);
+                const showCalculator = ref(false); const showHotelModal = ref(false);
                 const selectedDate = ref(''); const joinTripId = ref(''); 
                 const firebaseStatus = ref('connecting'); const errorMessage = ref('');
                 const loginBtnText = computed(() => firebaseStatus.value === 'connecting' ? 'Connecting...' : 'START');
@@ -388,113 +466,63 @@
 
                 const form = ref({ destination: '', startDate: '', endDate: '' });
                 const newItem = ref({ time: '10:00', text: '', category: 'sightseeing' });
-                const simpleFlight = ref({ code:'', airline:'', date:'', time:'' });
-                const newHotel = ref({ name:'', address:'', checkIn:'', checkOut:'' });
                 
-                // Voucher Logic with Edit
+                // Flight States
+                const showAddFlightModal = ref(false);
+                const showEditFlightModal = ref(false);
+                const simpleFlight = ref({ code:'', airline:'', date:'', time:'' });
+                const editFlightData = ref({});
+                const editFlightIndex = ref(-1);
+
+                const newHotel = ref({ name:'', address:'', checkIn:'', checkOut:'' });
                 const newVoucher = ref({ title:'', note:'', file:null, fileType:null });
                 const isEditingVoucher = ref(false);
                 const editingVoucherIndex = ref(-1);
-
                 const genericInput = ref('');
                 const newMemberName = ref('');
                 const calcCurrency = ref('JPY'); const calcInput = ref(''); const expenseNote = ref(''); const expensePayer = ref('Me'); const expenseSplitters = ref(['Me']); 
                 const rates = { JPY: 0.22, KRW: 0.024, USD: 32.1, EUR: 34.5, THB: 0.9 };
-                
                 let unsubscribeTrips = null; let unsubscribeCurrentTrip = null;
 
                 onMounted(() => {
-                    const initApp = () => {
-                        if(window.fb && window.fb.auth) {
-                            firebaseStatus.value = 'ready';
-                            window.fb.onAuthStateChanged(window.fb.auth, (u) => { user.value = u; if(u) loadTrips(); });
-                            document.getElementById('app-loading').classList.add('hidden-load');
-                        }
-                    };
-                    window.addEventListener('firebase-ready', initApp);
-                    setTimeout(() => { if(window.fb) initApp(); else document.getElementById('app-loading').classList.add('hidden-load'); }, 2000);
-                    setTheme('classic'); // Default theme
+                    const initApp = () => { if(window.fb && window.fb.auth) { firebaseStatus.value = 'ready'; window.fb.onAuthStateChanged(window.fb.auth, (u) => { user.value = u; if(u) loadTrips(); }); document.getElementById('app-loading').classList.add('hidden-load'); } };
+                    window.addEventListener('firebase-ready', initApp); setTimeout(() => { if(window.fb) initApp(); else document.getElementById('app-loading').classList.add('hidden-load'); }, 2000);
+                    setTheme('classic');
                 });
-
-                // Theme Logic
-                const setTheme = (name) => {
-                    currentTheme.value = name;
-                    const c = themeConfig[name];
-                    document.documentElement.style.setProperty('--main-bg', c.bg);
-                    document.documentElement.style.setProperty('--accent', c.accent);
-                    document.documentElement.style.setProperty('--accent-light', c.light);
-                };
-
+                const setTheme = (name) => { currentTheme.value = name; const c = themeConfig[name]; document.documentElement.style.setProperty('--main-bg', c.bg); document.documentElement.style.setProperty('--accent', c.accent); document.documentElement.style.setProperty('--accent-light', c.light); };
                 const login = async () => { try { if (!window.fb) throw new Error("Init Error"); await window.fb.signInAnonymously(window.fb.auth); } catch (e) { errorMessage.value = e.message; } };
                 const logout = () => window.fb.signOut(window.fb.auth);
-                const loadTrips = () => {
-                    loading.value = true;
-                    if(unsubscribeTrips) unsubscribeTrips();
-                    const q = window.fb.query(window.fb.collection(window.fb.db, "trips"), window.fb.where("members", "array-contains", user.value.uid));
-                    unsubscribeTrips = window.fb.onSnapshot(q, (snap) => { trips.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); loading.value = false; });
-                };
+                const loadTrips = () => { loading.value = true; if(unsubscribeTrips) unsubscribeTrips(); const q = window.fb.query(window.fb.collection(window.fb.db, "trips"), window.fb.where("members", "array-contains", user.value.uid)); unsubscribeTrips = window.fb.onSnapshot(q, (snap) => { trips.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); loading.value = false; }); };
                 const backToHome = () => { currentView.value = 'home'; if(unsubscribeCurrentTrip) { unsubscribeCurrentTrip(); unsubscribeCurrentTrip = null; } currentTrip.value = {}; loadTrips(); };
-                const openTrip = (trip) => {
-                    if(unsubscribeCurrentTrip) unsubscribeCurrentTrip();
-                    unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => {
-                        if(doc.exists()) { currentTrip.value = { id: doc.id, ...doc.data() }; if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate); }
-                    });
-                    currentView.value = 'dashboard';
-                };
+                const openTrip = (trip) => { if(unsubscribeCurrentTrip) unsubscribeCurrentTrip(); unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => { if(doc.exists()) { currentTrip.value = { id: doc.id, ...doc.data() }; if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate); } }); currentView.value = 'dashboard'; };
                 const openNewTripModal = () => { isModalOpen.value = true; };
                 const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
                 const createCloudTrip = async () => { if (!form.value.destination || !form.value.startDate) return; await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { ...form.value, members: [user.value.uid], itinerary: {}, todos: [], expenses: [], flights: [], hotels: [], vouchers: [], wishlist: [], createdAt: Date.now() }); isModalOpen.value = false; };
                 const deleteTrip = async (trip) => { if(confirm('Delete?')) await window.fb.deleteDoc(window.fb.doc(window.fb.db, "trips", trip.id)); };
                 const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
+                const updateTripCover = async (trip, e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = async (ev) => { const i = new Image(); i.onload = async () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); const b64 = c.toDataURL('image/jpeg',0.6); await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", trip.id), { coverImage: b64 }); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
 
-                // Flights & Hotels
-                const addSimpleFlight = () => { if(!currentTrip.value.flights) currentTrip.value.flights = []; currentTrip.value.flights.push({ ...simpleFlight.value }); simpleFlight.value = { code:'', airline:'', date:'', time:'' }; syncUpdate(); };
-                const removeFlight = (i) => { currentTrip.value.flights.splice(i,1); syncUpdate(); };
-                const addHotel = () => { if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; currentTrip.value.hotels.push({...newHotel.value}); newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; syncUpdate(); };
-                const removeHotel = (i) => { currentTrip.value.hotels.splice(i,1); syncUpdate(); };
-
-                // Vouchers (Updated with PDF & Edit)
-                const handleVoucherFile = (e) => { 
-                    const f = e.target.files[0]; 
-                    if(f) {
-                        if (f.size > 2000000) { alert("File too big (Max 2MB)"); return; } // Simple check
-                        const r = new FileReader(); 
-                        r.onload = (ev) => { 
-                            newVoucher.value.file = ev.target.result; 
-                            newVoucher.value.fileType = f.type === 'application/pdf' ? 'pdf' : 'img';
-                        }; 
-                        r.readAsDataURL(f);
-                    } 
-                };
-                const saveVoucher = () => {
-                    if(!currentTrip.value.vouchers) currentTrip.value.vouchers = [];
-                    if(isEditingVoucher.value) {
-                        currentTrip.value.vouchers[editingVoucherIndex.value] = { ...newVoucher.value };
-                        isEditingVoucher.value = false;
-                        editingVoucherIndex.value = -1;
-                    } else {
-                        currentTrip.value.vouchers.push({ ...newVoucher.value });
-                    }
-                    newVoucher.value = { title:'', note:'', file:null, fileType:null };
+                // Flights (Updated Logic)
+                const addSimpleFlight = () => {
+                    if(!currentTrip.value.flights) currentTrip.value.flights = [];
+                    currentTrip.value.flights.push({ ...simpleFlight.value, origin:'', dest:'', arrTime:'', baggage:'', aircraft:'', cost:'' });
+                    simpleFlight.value = { code:'', airline:'', date:'', time:'' };
+                    showAddFlightModal.value = false;
                     syncUpdate();
                 };
-                const editVoucher = (v, i) => {
-                    newVoucher.value = { ...v };
-                    isEditingVoucher.value = true;
-                    editingVoucherIndex.value = i;
-                };
-                const cancelEditVoucher = () => {
-                    newVoucher.value = { title:'', note:'', file:null, fileType:null };
-                    isEditingVoucher.value = false;
-                    editingVoucherIndex.value = -1;
-                };
-                const removeVoucher = (i) => { currentTrip.value.vouchers.splice(i, 1); syncUpdate(); };
-                const openFile = (fileData) => {
-                    const win = window.open();
-                    win.document.write('<iframe src="' + fileData + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
-                };
+                const openFlightDetail = (f, i) => { editFlightData.value = { ...f }; editFlightIndex.value = i; showEditFlightModal.value = true; };
+                const saveFlightDetail = () => { if(editFlightIndex.value > -1) { currentTrip.value.flights[editFlightIndex.value] = { ...editFlightData.value }; syncUpdate(); } showEditFlightModal.value = false; };
+                const deleteCurrentFlight = () => { currentTrip.value.flights.splice(editFlightIndex.value, 1); syncUpdate(); showEditFlightModal.value = false; };
 
-                // Others
+                const addHotel = () => { if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; currentTrip.value.hotels.push({...newHotel.value}); newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; syncUpdate(); };
+                const removeHotel = (i) => { currentTrip.value.hotels.splice(i,1); syncUpdate(); };
+                const handleVoucherFile = (e) => { const f = e.target.files[0]; if(f) { if (f.size > 2000000) { alert("Max 2MB"); return; } const r = new FileReader(); r.onload = (ev) => { newVoucher.value.file = ev.target.result; newVoucher.value.fileType = f.type === 'application/pdf' ? 'pdf' : 'img'; }; r.readAsDataURL(f); } };
+                const saveVoucher = () => { if(!currentTrip.value.vouchers) currentTrip.value.vouchers = []; if(isEditingVoucher.value) { currentTrip.value.vouchers[editingVoucherIndex.value] = { ...newVoucher.value }; isEditingVoucher.value = false; editingVoucherIndex.value = -1; } else { currentTrip.value.vouchers.push({ ...newVoucher.value }); } newVoucher.value = { title:'', note:'', file:null, fileType:null }; syncUpdate(); };
+                const editVoucher = (v, i) => { newVoucher.value = { ...v }; isEditingVoucher.value = true; editingVoucherIndex.value = i; };
+                const cancelEditVoucher = () => { newVoucher.value = { title:'', note:'', file:null, fileType:null }; isEditingVoucher.value = false; editingVoucherIndex.value = -1; };
+                const removeVoucher = (i) => { currentTrip.value.vouchers.splice(i, 1); syncUpdate(); };
+                const openFile = (d) => { const w = window.open(); w.document.write('<iframe src="'+d+'" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>'); };
+
                 const formatDate = (s) => s ? s.replace(/-/g, '/') : '';
                 const getDays = (s,e) => { const d1=new Date(s), d2=new Date(e); return isNaN(d1)||isNaN(d2)?0:Math.floor((d2-d1)/86400000)+1; };
                 const copyId = () => navigator.clipboard.writeText(currentTrip.value.id);
@@ -520,10 +548,11 @@
                 const handleClickCalc = () => { showCalculator.value = true; };
                 
                 return {
-                    user, login, logout, trips, currentTrip, currentView, loading, isModalOpen, showSettings, showCalculator, showFlightModal, showHotelModal, selectedDate, joinTripId, firebaseStatus, errorMessage, loginBtnText, t, langNames, currentLang,
-                    form, newItem, openNewTripModal, createCloudTrip, deleteTrip, openTrip, backToHome, copyId, getDays, formatDate, joinTrip,
+                    user, login, logout, trips, currentTrip, currentView, loading, isModalOpen, showSettings, showCalculator, showHotelModal, selectedDate, joinTripId, firebaseStatus, errorMessage, loginBtnText, t, langNames, currentLang,
+                    form, newItem, openNewTripModal, createCloudTrip, deleteTrip, openTrip, backToHome, copyId, getDays, formatDate, joinTrip, updateTripCover,
                     tripDates, getDayItems, saveItem, deleteItem, changeToItinerary,
-                    simpleFlight, addSimpleFlight, removeFlight, 
+                    simpleFlight, addSimpleFlight, 
+                    showAddFlightModal, showEditFlightModal, editFlightData, openFlightDetail, saveFlightDetail, deleteCurrentFlight,
                     newVoucher, handleVoucherFile, saveVoucher, editVoucher, cancelEditVoucher, removeVoucher, openFile, isEditingVoucher,
                     newHotel, addHotel, removeHotel,
                     totalExpense, handleCalc, calcInput, calcCurrency, calculateTWD, expenseNote, expensePayer, expenseSplitters, saveExpense, deleteExpense, newMemberName, addMember, removeMember,
