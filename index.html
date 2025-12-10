@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v41 (Config Fixed)</title>
+    <title>Trip Planner v42 (Weather & Defaults)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,17 +29,17 @@
         };
     </script>
     
-    <!-- Firebase SDK (使用穩定版 v10.12.2 以確保相容性) -->
+    <!-- Firebase SDK (v10.12.2) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // ==========================================
-        // Firebase 設定 (使用您提供的正確資訊)
+        // Firebase 設定
         // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
+            apiKey: "AIzaSyAmUlW9yahH8RCDXr24dtN2l7XXKYNwZrk", 
             authDomain: "travel-8eaef.firebaseapp.com",
             projectId: "travel-8eaef",
             storageBucket: "travel-8eaef.firebasestorage.app",
@@ -121,7 +121,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.10</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.11</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -183,15 +183,32 @@
                     </div>
                     <div class="w-10"></div>
                 </div>
-                <div class="p-4 flex-1 overflow-y-auto pb-24 scrollbar-hide">
-                    <div class="grid grid-cols-2 gap-3 mb-6">
-                        <div @click="changeToItinerary" class="col-span-2 bg-text-main rounded-2xl h-32 flex flex-col justify-center items-center cursor-pointer active:scale-[0.98] relative overflow-hidden shadow-lg"><i class="fa-solid fa-map-location-dot text-7xl text-white opacity-10 absolute -right-2 -bottom-4"></i><h3 class="text-2xl font-black text-white z-10 tracking-widest">{{ t('itinerary') }}</h3></div>
-                        <div @click="openTool('budget')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-wallet text-2xl mb-1 text-accent"></i><span class="font-bold text-xs text-text-main">{{ t('budget') }}</span></div>
-                        <div @click="openGenericList('luggage')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-suitcase text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('luggage') }}</span></div>
-                        <div @click="currentView = 'flights'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer border border-transparent hover:border-accent transition-colors"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('flights') }}</span></div>
-                        <div @click="showHotelModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('hotels') }}</span></div>
-                        <div @click="currentView = 'notes_menu'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-note-sticky text-2xl mb-1 text-yellow-500"></i><span class="font-bold text-xs text-text-main">{{ t('notes') }}</span></div>
-                        <div @click="openTool('vouchers')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-ticket text-2xl mb-1 text-orange-400"></i><span class="font-bold text-xs text-text-main">{{ t('vouchers') }}</span></div>
+                
+                <div class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
+                    <!-- 5. Weather Forecast (Horizontal Scroll) -->
+                    <div class="px-4 pt-2 mb-2">
+                        <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                            <div v-for="(w, idx) in weatherForecast" :key="idx" class="flex-shrink-0 w-16 h-20 bg-white rounded-xl flex flex-col items-center justify-center shadow-sm border border-gray-100">
+                                <span class="text-[10px] text-gray-400 font-bold uppercase">{{ w.day }}</span>
+                                <i :class="w.icon" class="text-2xl my-1 text-text-main"></i>
+                                <span class="text-xs font-black">{{ w.temp }}°</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 pt-0">
+                        <div class="grid grid-cols-2 gap-3 mb-6">
+                            <div @click="changeToItinerary" class="col-span-2 bg-text-main rounded-2xl h-32 flex flex-col justify-center items-center cursor-pointer active:scale-[0.98] relative overflow-hidden shadow-lg"><i class="fa-solid fa-map-location-dot text-7xl text-white opacity-10 absolute -right-2 -bottom-4"></i><h3 class="text-2xl font-black text-white z-10 tracking-widest">{{ t('itinerary') }}</h3></div>
+                            <div @click="openTool('budget')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-wallet text-2xl mb-1 text-accent"></i><span class="font-bold text-xs text-text-main">{{ t('budget') }}</span></div>
+                            
+                            <!-- 4. Packing changed to Translation -->
+                            <div @click="showTranslationModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-language text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('translation') }}</span></div>
+                            
+                            <div @click="currentView = 'flights'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer border border-transparent hover:border-accent transition-colors"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('flights') }}</span></div>
+                            <div @click="showHotelModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('hotels') }}</span></div>
+                            <div @click="currentView = 'notes_menu'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-note-sticky text-2xl mb-1 text-yellow-500"></i><span class="font-bold text-xs text-text-main">{{ t('notes') }}</span></div>
+                            <div @click="openTool('vouchers')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-ticket text-2xl mb-1 text-orange-400"></i><span class="font-bold text-xs text-text-main">{{ t('vouchers') }}</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -274,15 +291,16 @@
                             <div class="text-center mb-6">
                                 <div class="text-5xl font-black text-text-main tracking-tight">{{ f.code || 'FLT' }}</div>
                             </div>
+                            <!-- 1. Flight Spacing Fix -->
                             <div class="flex justify-between items-center mb-6 px-2">
                                 <div class="text-center">
                                     <div class="text-3xl font-black text-text-main uppercase">{{ f.origin || 'DEP' }}</div>
                                     <div class="text-xl font-bold text-text-main mt-1">{{ f.time || '--:--' }}</div>
                                     <div class="mt-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full inline-block">{{ f.originCity || t('originCity') }}</div>
                                 </div>
-                                <div class="flex-1 flex flex-col items-center px-4 relative -top-3">
+                                <div class="flex-1 flex flex-col items-center px-4 relative -top-3 gap-1">
                                     <div class="text-[10px] text-gray-400 font-bold mb-1">{{ t('direct') }}</div>
-                                    <div class="w-full h-0.5 bg-gray-200 relative"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
+                                    <div class="w-full h-0.5 bg-gray-200 relative my-1"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
                                     <div class="text-[10px] text-gray-400 font-bold mt-1">{{ formatDate(f.date) }}</div>
                                 </div>
                                 <div class="text-center">
@@ -442,6 +460,18 @@
                 </div>
             </div>
 
+            <!-- MODAL: TRANSLATION PICKER -->
+            <div v-if="showTranslationModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
+                <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl text-center">
+                    <h2 class="text-xl font-black mb-4 text-text-main">{{ t('translation') }}</h2>
+                    <div class="space-y-3">
+                        <button @click="window.open('https://translate.google.com')" class="w-full py-4 bg-blue-50 text-blue-600 font-bold rounded-xl flex items-center justify-center gap-2"><i class="fa-brands fa-google"></i> Google Translate</button>
+                        <button @click="window.open('https://chatgpt.com')" class="w-full py-4 bg-green-50 text-green-600 font-bold rounded-xl flex items-center justify-center gap-2"><i class="fa-solid fa-robot"></i> ChatGPT</button>
+                        <button @click="showTranslationModal=false" class="w-full py-3 text-gray-400 font-bold mt-2">{{ t('cancel') }}</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- SETTINGS: THEMES & LANGUAGE -->
             <div v-if="showSettings" class="fixed inset-0 bg-white z-50 p-6 flex flex-col">
                 <div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-black text-text-main">{{ t('settings') }}</h2><button @click="showSettings = false" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold">✕</button></div>
@@ -508,10 +538,10 @@
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
         const i18n = {
-            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅' },
-            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', notes:'NOTES', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split', todo:'To-Do', luggage:'Luggage', places:'Places', emptyList:'Empty List', addTask:'Add Task', addLuggage:'Add Item', addPlace:'Add Place', addShopping:'Add Item', addPhoto:'Add Photo', address:'Address', editItem:'Edit Item', theme:'THEME', language:'LANGUAGE', userName:'USER NAME', classic:'Classic', postcard:'Postcard', dune:'Dune', seafoam:'Seafoam', saffron:'Saffron' },
-            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', notes:'メモ', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ', oneTicket:'同一予約', bagagge:'荷物', aircraft:'機材', price:'価格', direct:'直行便', date:'日付', editFlightDetails:'フライト編集', done:'完了', originCode:'出発コード', destCode:'到着コード', originCity:'出発都市', destCity:'到着都市', depTime:'出発時刻', arrTime:'到着時刻', baggage:'荷物', totalCost:'合計金額', deleteFlight:'フライト削除', noFlights:'フライトなし', editNote:'メモ編集', fileReady:'準備完了', viewImg:'画像表示', openPdf:'PDFを開く', payer:'支払者', split:'割り勘', todo:'ToDo', luggage:'荷物', places:'行きたい', emptyList:'リストなし', addTask:'タスク追加', addLuggage:'荷物追加', addPlace:'場所追加', addShopping:'買物追加', addPhoto:'写真追加', address:'住所', editItem:'項目編集', theme:'テーマ', language:'言語', userName:'ユーザー名', classic:'クラシック', postcard:'ポストカード', dune:'砂丘', seafoam:'シーフォーム', saffron:'サフラン' },
-            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', notes:'메모', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모', oneTicket:'동일 예약', bagagge:'수하물', aircraft:'기종', price:'가격', direct:'직항', date:'날짜', editFlightDetails:'항공편 편집', done:'완료', originCode:'출발 코드', destCode:'도착 코드', originCity:'출발 도시', destCity:'도착 도시', depTime:'출발 시간', arrTime:'도착 시간', baggage:'수하물', totalCost:'총 비용', deleteFlight:'항공편 삭제', noFlights:'항공편 없음', editNote:'메모 편집', fileReady:'파일 준비됨', viewImg:'이미지 보기', openPdf:'PDF 열기', payer:'결제자', split:'분할', todo:'할일', luggage:'짐', places:'장소', emptyList:'항목 없음', addTask:'할일 추가', addLuggage:'짐 추가', addPlace:'장소 추가', addShopping:'쇼핑 추가', addPhoto:'사진 추가', address:'주소', editItem:'항목 편집', theme:'테마', language:'언어', userName:'사용자 이름', classic:'클래식', postcard:'엽서', dune:'사구', seafoam:'바다 거품', saffron:'사프란' }
+            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅', translation:'翻譯' },
+            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', notes:'NOTES', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split', todo:'To-Do', luggage:'Luggage', places:'Places', emptyList:'Empty List', addTask:'Add Task', addLuggage:'Add Item', addPlace:'Add Place', addShopping:'Add Item', addPhoto:'Add Photo', address:'Address', editItem:'Edit Item', theme:'THEME', language:'LANGUAGE', userName:'USER NAME', classic:'Classic', postcard:'Postcard', dune:'Dune', seafoam:'Seafoam', saffron:'Saffron', translation:'Translate' },
+            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', notes:'メモ', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ', oneTicket:'同一予約', bagagge:'荷物', aircraft:'機材', price:'価格', direct:'直行便', date:'日付', editFlightDetails:'フライト編集', done:'完了', originCode:'出発コード', destCode:'到着コード', originCity:'出発都市', destCity:'到着都市', depTime:'出発時刻', arrTime:'到着時刻', baggage:'荷物', totalCost:'合計金額', deleteFlight:'フライト削除', noFlights:'フライトなし', editNote:'メモ編集', fileReady:'準備完了', viewImg:'画像表示', openPdf:'PDFを開く', payer:'支払者', split:'割り勘', todo:'ToDo', luggage:'荷物', places:'行きたい', emptyList:'リストなし', addTask:'タスク追加', addLuggage:'荷物追加', addPlace:'場所追加', addShopping:'買物追加', addPhoto:'写真追加', address:'住所', editItem:'項目編集', theme:'テーマ', language:'言語', userName:'ユーザー名', classic:'クラシック', postcard:'ポストカード', dune:'砂丘', seafoam:'シーフォーム', saffron:'サフラン', translation:'翻訳' },
+            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', notes:'메모', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모', oneTicket:'동일 예약', bagagge:'수하물', aircraft:'기종', price:'가격', direct:'직항', date:'날짜', editFlightDetails:'항공편 편집', done:'완료', originCode:'출발 코드', destCode:'도착 코드', originCity:'출발 도시', destCity:'도착 도시', depTime:'출발 시간', arrTime:'도착 시간', baggage:'수하물', totalCost:'총 비용', deleteFlight:'항공편 삭제', noFlights:'항공편 없음', editNote:'메모 편집', fileReady:'파일 준비됨', viewImg:'이미지 보기', openPdf:'PDF 열기', payer:'결제자', split:'분할', todo:'할일', luggage:'짐', places:'장소', emptyList:'항목 없음', addTask:'할일 추가', addLuggage:'짐 추가', addPlace:'장소 추가', addShopping:'쇼핑 추가', addPhoto:'사진 추가', address:'주소', editItem:'항목 편집', theme:'테마', language:'언어', userName:'사용자 이름', classic:'클래식', postcard:'엽서', dune:'사구', seafoam:'바다 거품', saffron:'사프란', translation:'번역' }
         };
         const langNames = { 'zh-TW':'繁體中文', 'en':'English', 'ja':'日本語', 'ko':'한국어' };
         const themeConfig = { classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' }, postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } };
@@ -526,12 +556,12 @@
                 const currentView = ref('home'); const loading = ref(false);
                 const isModalOpen = ref(false); const showSettings = ref(false);
                 const showCalculator = ref(false); const showHotelModal = ref(false);
+                const showTranslationModal = ref(false); // 3. Translation Modal
                 const selectedDate = ref(''); const joinTripId = ref(''); 
                 const firebaseStatus = ref('connecting'); const errorMessage = ref('');
                 const loginBtnText = computed(() => firebaseStatus.value === 'connecting' ? 'Connecting...' : 'START');
                 const currentLang = ref('zh-TW'); const t = (key) => i18n[currentLang.value][key] || key;
                 const currentTheme = ref('classic');
-                // User Name state
                 const userName = ref('Me'); 
 
                 const form = ref({ destination: '', startDate: '', endDate: '' });
@@ -567,7 +597,6 @@
                     window.addEventListener('firebase-ready', initApp); setTimeout(() => { if(window.fb) initApp(); else document.getElementById('app-loading').classList.add('hidden-load'); }, 2000);
                     const savedTheme = localStorage.getItem('trip_theme');
                     setTheme(savedTheme || 'classic');
-                    // Load saved username from localStorage
                     const savedName = localStorage.getItem('trip_user_name');
                     if(savedName) userName.value = savedName;
                 });
@@ -575,7 +604,6 @@
                 const setTheme = (name) => { currentTheme.value = name; localStorage.setItem('trip_theme', name); const c = themeConfig[name]; document.documentElement.style.setProperty('--main-bg', c.bg); document.documentElement.style.setProperty('--accent', c.accent); document.documentElement.style.setProperty('--accent-light', c.light); };
                 const saveUserName = async () => {
                     localStorage.setItem('trip_user_name', userName.value);
-                    // Also sync to firebase if currently in a trip
                     if(currentTrip.value.id && user.value) {
                         const update = {};
                         update[`memberNames.${user.value.uid}`] = userName.value;
@@ -583,10 +611,10 @@
                     }
                 };
                 const getDisplayName = (uid) => {
-                    if (uid === user.value?.uid) return userName.value; // It's me
-                    if (currentTrip.value.memberNames && currentTrip.value.memberNames[uid]) return currentTrip.value.memberNames[uid]; // It's a mapped member
-                    if (uid === 'Me') return 'Me'; // Fallback for old data
-                    return uid; // Fallback to UID if unknown
+                    if (uid === user.value?.uid) return userName.value; 
+                    if (currentTrip.value.memberNames && currentTrip.value.memberNames[uid]) return currentTrip.value.memberNames[uid]; 
+                    if (uid === 'Me') return 'Me'; 
+                    return uid; 
                 };
 
                 const login = async () => { try { if (!window.fb) throw new Error("Init Error"); await window.fb.signInAnonymously(window.fb.auth); } catch (e) { errorMessage.value = e.message; } };
@@ -596,10 +624,59 @@
                 const openTrip = (trip) => { if(unsubscribeCurrentTrip) unsubscribeCurrentTrip(); unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => { if(doc.exists()) { currentTrip.value = { id: doc.id, ...doc.data() }; if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate); } }); currentView.value = 'dashboard'; };
                 const openNewTripModal = () => { isModalOpen.value = true; };
                 const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
-                const createCloudTrip = async () => { if (!form.value.destination || !form.value.startDate) return; await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { ...form.value, members: [user.value.uid], memberNames: {}, itinerary: {}, todos: [], wishlist: [], places: [], tasks: [], expenses: [], flights: [], hotels: [], vouchers: [], createdAt: Date.now() }); isModalOpen.value = false; };
+                
+                // 2. Modified createCloudTrip with Defaults
+                const createCloudTrip = async () => { 
+                    if (!form.value.destination || !form.value.startDate) return; 
+                    
+                    const defaultTasks = [
+                        { text: '護照日期檢查', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
+                        { text: '入境憑證辦理', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
+                        { text: '換外幣', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }
+                    ];
+                    const defaultLuggage = [
+                        { text: '護照', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
+                        { text: '充電器', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
+                        { text: '盥洗用具', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }
+                    ];
+
+                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { 
+                        ...form.value, 
+                        members: [user.value.uid], 
+                        memberNames: { [user.value.uid]: userName.value },
+                        itinerary: {}, 
+                        todos: defaultLuggage, // Luggage
+                        wishlist: [], // Shopping
+                        places: [], // Places
+                        tasks: defaultTasks, // ToDo
+                        expenses: [], flights: [], hotels: [], vouchers: [], 
+                        createdAt: Date.now() 
+                    }); 
+                    isModalOpen.value = false; 
+                };
+                
                 const deleteTrip = async (trip) => { if(confirm('Delete?')) await window.fb.deleteDoc(window.fb.doc(window.fb.db, "trips", trip.id)); };
                 const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
                 const updateTripCover = async (trip, e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = async (ev) => { const i = new Image(); i.onload = async () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); const b64 = c.toDataURL('image/jpeg',0.6); await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", trip.id), { coverImage: b64 }); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
+
+                // 5. Simulated Weather Generator
+                const weatherForecast = computed(() => {
+                    if(!currentTrip.value.startDate || !currentTrip.value.endDate) return [];
+                    const days = [];
+                    let c = new Date(currentTrip.value.startDate);
+                    const e = new Date(currentTrip.value.endDate);
+                    const icons = ['fa-solid fa-sun text-yellow-400', 'fa-solid fa-cloud-sun text-orange-300', 'fa-solid fa-cloud text-gray-400', 'fa-solid fa-cloud-rain text-blue-400'];
+                    
+                    while(c <= e) {
+                        const dayName = c.toLocaleDateString('en-US', { weekday: 'short' });
+                        // Randomize for demo
+                        const rnd = Math.floor(Math.random() * icons.length);
+                        const temp = 20 + Math.floor(Math.random() * 10);
+                        days.push({ day: dayName, icon: icons[rnd], temp: temp });
+                        c.setDate(c.getDate()+1);
+                    }
+                    return days;
+                });
 
                 // Flights
                 const addSimpleFlight = () => { if(!currentTrip.value.flights) currentTrip.value.flights = []; currentTrip.value.flights.push({ ...simpleFlight.value, origin:'', dest:'', originCity:'', destCity:'', arrTime:'', baggage:'', aircraft:'', cost:'' }); simpleFlight.value = { code:'', airline:'', date:'', time:'' }; showAddFlightModal.value = false; syncUpdate(); };
@@ -708,7 +785,7 @@
                 const handleClickCalc = () => { showCalculator.value = true; };
                 
                 return {
-                    user, login, logout, trips, currentTrip, currentView, loading, isModalOpen, showSettings, showCalculator, showHotelModal, selectedDate, joinTripId, firebaseStatus, errorMessage, loginBtnText, t, langNames, currentLang,
+                    user, login, logout, trips, currentTrip, currentView, loading, isModalOpen, showSettings, showCalculator, showHotelModal, showTranslationModal, selectedDate, joinTripId, firebaseStatus, errorMessage, loginBtnText, t, langNames, currentLang,
                     form, newItem, openNewTripModal, createCloudTrip, deleteTrip, openTrip, backToHome, copyId, getDays, formatDate, joinTrip, updateTripCover,
                     tripDates, getDayItems, saveItem, deleteItem, changeToItinerary,
                     simpleFlight, addSimpleFlight, 
@@ -719,7 +796,7 @@
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt)}`),
-                    setTheme, currentTheme, userName, saveUserName, getDisplayName
+                    setTheme, currentTheme, userName, saveUserName, getDisplayName, weatherForecast
                 };
             }
         }).mount('#app');
