@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v42 (Weather & Defaults)</title>
+    <title>Trip Planner v43 (Windy Only)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,7 +36,10 @@
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // ==========================================
-        // Firebase 設定
+        // ⚠️ Firebase 設定檢查
+        // 如果出現 auth/configuration-not-found 錯誤，
+        // 請務必確認 projectId 與 apiKey 是否屬於同一個 Firebase 專案。
+        // 建議直接從 Firebase Console > Project Settings 複製「整段」內容覆蓋下方。
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyAmUlW9yahH8RCDXr24dtN2l7XXKYNwZrk", 
@@ -106,6 +109,10 @@
         .hidden-load { opacity: 0; pointer-events: none; }
         [v-cloak] { display: none; }
         button, .bg-accent { transition: background-color 0.3s ease, color 0.3s ease; }
+        
+        /* Iframe Container */
+        .windy-container { width: 100%; height: 200px; border-radius: 1rem; overflow: hidden; border: 1px solid #E5E7EB; margin-bottom: 0.5rem; }
+        .windy-iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body class="selection:bg-accent selection:text-white">
@@ -121,7 +128,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.11</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.12</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -185,13 +192,20 @@
                 </div>
                 
                 <div class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
-                    <!-- 5. Weather Forecast (Horizontal Scroll) -->
-                    <div class="px-4 pt-2 mb-2">
-                        <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                            <div v-for="(w, idx) in weatherForecast" :key="idx" class="flex-shrink-0 w-16 h-20 bg-white rounded-xl flex flex-col items-center justify-center shadow-sm border border-gray-100">
-                                <span class="text-[10px] text-gray-400 font-bold uppercase">{{ w.day }}</span>
-                                <i :class="w.icon" class="text-2xl my-1 text-text-main"></i>
-                                <span class="text-xs font-black">{{ w.temp }}°</span>
+                    <!-- Windy Embed Only -->
+                    <div class="px-4 pt-2 mb-4">
+                        <div class="windy-container relative shadow-sm">
+                            <iframe class="windy-iframe" :src="windyEmbedUrl"></iframe>
+                        </div>
+                        <!-- Removed Buttons as requested -->
+                    </div>
+
+                    <!-- Date Scroll (Timeline) -->
+                    <div class="px-4 mb-4">
+                        <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+                            <div v-for="(d, idx) in tripDates" :key="idx" class="flex-shrink-0 w-16 h-16 bg-white rounded-xl flex flex-col items-center justify-center shadow-sm border border-gray-100">
+                                <span class="text-[10px] text-gray-400 font-bold uppercase">{{ d.split('/')[2] }}</span>
+                                <span class="text-xs font-black">DAY {{ idx+1 }}</span>
                             </div>
                         </div>
                     </div>
@@ -200,10 +214,7 @@
                         <div class="grid grid-cols-2 gap-3 mb-6">
                             <div @click="changeToItinerary" class="col-span-2 bg-text-main rounded-2xl h-32 flex flex-col justify-center items-center cursor-pointer active:scale-[0.98] relative overflow-hidden shadow-lg"><i class="fa-solid fa-map-location-dot text-7xl text-white opacity-10 absolute -right-2 -bottom-4"></i><h3 class="text-2xl font-black text-white z-10 tracking-widest">{{ t('itinerary') }}</h3></div>
                             <div @click="openTool('budget')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-wallet text-2xl mb-1 text-accent"></i><span class="font-bold text-xs text-text-main">{{ t('budget') }}</span></div>
-                            
-                            <!-- 4. Packing changed to Translation -->
                             <div @click="showTranslationModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-language text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('translation') }}</span></div>
-                            
                             <div @click="currentView = 'flights'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer border border-transparent hover:border-accent transition-colors"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('flights') }}</span></div>
                             <div @click="showHotelModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('hotels') }}</span></div>
                             <div @click="currentView = 'notes_menu'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-note-sticky text-2xl mb-1 text-yellow-500"></i><span class="font-bold text-xs text-text-main">{{ t('notes') }}</span></div>
@@ -291,7 +302,6 @@
                             <div class="text-center mb-6">
                                 <div class="text-5xl font-black text-text-main tracking-tight">{{ f.code || 'FLT' }}</div>
                             </div>
-                            <!-- 1. Flight Spacing Fix -->
                             <div class="flex justify-between items-center mb-6 px-2">
                                 <div class="text-center">
                                     <div class="text-3xl font-black text-text-main uppercase">{{ f.origin || 'DEP' }}</div>
@@ -546,9 +556,11 @@
         const langNames = { 'zh-TW':'繁體中文', 'en':'English', 'ja':'日本語', 'ko':'한국어' };
         const themeConfig = { classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' }, postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } };
 
-        // City to Airport Code Mapping
-        const cityToCodeMap = { 'taipei': 'TPE', 'kaohsiung': 'KHH', 'taichung': 'RMQ', 'tokyo': 'NRT', 'osaka': 'KIX', 'fukuoka': 'FUK', 'sapporo': 'CTS', 'okinawa': 'OKA', 'seoul': 'ICN', 'busan': 'PUS', 'jeju': 'CJU', 'bangkok': 'BKK', 'singapore': 'SIN', 'hong kong': 'HKG', 'macau': 'MFM', 'los angeles': 'LAX', 'new york': 'JFK', 'london': 'LHR', 'paris': 'CDG' };
-        const getAirportCode = (city) => { if(!city) return ''; const lower = city.toLowerCase().trim(); return cityToCodeMap[lower] || city.substring(0,3).toUpperCase(); };
+        // City Data for Windy
+        const cityData = { 
+            'taipei': { lat: 25.03, lon: 121.56, code: 'TPE' }, 'kaohsiung': { lat: 22.62, lon: 120.30, code: 'KHH' }, 'taichung': { lat: 24.14, lon: 120.68, code: 'RMQ' }, 'tokyo': { lat: 35.67, lon: 139.65, code: 'NRT' }, 'osaka': { lat: 34.69, lon: 135.50, code: 'KIX' }, 'fukuoka': { lat: 33.59, lon: 130.40, code: 'FUK' }, 'sapporo': { lat: 43.06, lon: 141.35, code: 'CTS' }, 'okinawa': { lat: 26.21, lon: 127.68, code: 'OKA' }, 'seoul': { lat: 37.56, lon: 126.97, code: 'ICN' }, 'busan': { lat: 35.17, lon: 129.07, code: 'PUS' }, 'jeju': { lat: 33.49, lon: 126.53, code: 'CJU' }, 'bangkok': { lat: 13.75, lon: 100.50, code: 'BKK' }, 'singapore': { lat: 1.35, lon: 103.81, code: 'SIN' }, 'hong kong': { lat: 22.31, lon: 114.16, code: 'HKG' }, 'macau': { lat: 22.19, lon: 113.54, code: 'MFM' }, 'los angeles': { lat: 34.05, lon: -118.24, code: 'LAX' }, 'new york': { lat: 40.71, lon: -74.00, code: 'JFK' }, 'london': { lat: 51.50, lon: -0.12, code: 'LHR' }, 'paris': { lat: 48.85, lon: 2.35, code: 'CDG' }
+        };
+        const getAirportCode = (city) => { if(!city) return ''; const lower = city.toLowerCase().trim(); return cityData[lower] ? cityData[lower].code : city.substring(0,3).toUpperCase(); };
 
         createApp({
             setup() {
@@ -556,7 +568,7 @@
                 const currentView = ref('home'); const loading = ref(false);
                 const isModalOpen = ref(false); const showSettings = ref(false);
                 const showCalculator = ref(false); const showHotelModal = ref(false);
-                const showTranslationModal = ref(false); // 3. Translation Modal
+                const showTranslationModal = ref(false);
                 const selectedDate = ref(''); const joinTripId = ref(''); 
                 const firebaseStatus = ref('connecting'); const errorMessage = ref('');
                 const loginBtnText = computed(() => firebaseStatus.value === 'connecting' ? 'Connecting...' : 'START');
@@ -625,7 +637,6 @@
                 const openNewTripModal = () => { isModalOpen.value = true; };
                 const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
                 
-                // 2. Modified createCloudTrip with Defaults
                 const createCloudTrip = async () => { 
                     if (!form.value.destination || !form.value.startDate) return; 
                     
@@ -645,10 +656,10 @@
                         members: [user.value.uid], 
                         memberNames: { [user.value.uid]: userName.value },
                         itinerary: {}, 
-                        todos: defaultLuggage, // Luggage
-                        wishlist: [], // Shopping
-                        places: [], // Places
-                        tasks: defaultTasks, // ToDo
+                        todos: defaultLuggage, 
+                        wishlist: [], 
+                        places: [], 
+                        tasks: defaultTasks, 
                         expenses: [], flights: [], hotels: [], vouchers: [], 
                         createdAt: Date.now() 
                     }); 
@@ -659,23 +670,22 @@
                 const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
                 const updateTripCover = async (trip, e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = async (ev) => { const i = new Image(); i.onload = async () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); const b64 = c.toDataURL('image/jpeg',0.6); await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", trip.id), { coverImage: b64 }); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
 
-                // 5. Simulated Weather Generator
-                const weatherForecast = computed(() => {
-                    if(!currentTrip.value.startDate || !currentTrip.value.endDate) return [];
-                    const days = [];
-                    let c = new Date(currentTrip.value.startDate);
-                    const e = new Date(currentTrip.value.endDate);
-                    const icons = ['fa-solid fa-sun text-yellow-400', 'fa-solid fa-cloud-sun text-orange-300', 'fa-solid fa-cloud text-gray-400', 'fa-solid fa-cloud-rain text-blue-400'];
-                    
-                    while(c <= e) {
-                        const dayName = c.toLocaleDateString('en-US', { weekday: 'short' });
-                        // Randomize for demo
-                        const rnd = Math.floor(Math.random() * icons.length);
-                        const temp = 20 + Math.floor(Math.random() * 10);
-                        days.push({ day: dayName, icon: icons[rnd], temp: temp });
-                        c.setDate(c.getDate()+1);
+                // Windy Integration Logic
+                const windyEmbedUrl = computed(() => {
+                    let lat = 23.5; let lon = 121.0; // Default Taiwan
+                    if(currentTrip.value.destination) {
+                        const city = currentTrip.value.destination.toLowerCase().trim();
+                        if(cityData[city]) { lat = cityData[city].lat; lon = cityData[city].lon; }
                     }
-                    return days;
+                    return `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=5&level=surface&overlay=radar&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1`;
+                });
+                const windyFullUrl = computed(() => {
+                    let lat = 23.5; let lon = 121.0; 
+                    if(currentTrip.value.destination) {
+                        const city = currentTrip.value.destination.toLowerCase().trim();
+                        if(cityData[city]) { lat = cityData[city].lat; lon = cityData[city].lon; }
+                    }
+                    return `https://www.windy.com/?${lat},${lon},5`;
                 });
 
                 // Flights
@@ -796,7 +806,7 @@
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt)}`),
-                    setTheme, currentTheme, userName, saveUserName, getDisplayName, weatherForecast
+                    setTheme, currentTheme, userName, saveUserName, getDisplayName, windyEmbedUrl, windyFullUrl
                 };
             }
         }).mount('#app');
