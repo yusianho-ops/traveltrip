@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v37 (User Names & i18n)</title>
+    <title>Trip Planner v40 (New Key)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,8 +35,11 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+        // ==========================================
+        // Firebase 設定 (已更新 API Key)
+        // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
+            apiKey: "AIzaSyAmUlW9yahH8RCDXr24dtN2l7XXKYNwZrk", // Updated Key
             authDomain: "travel-8eaef.firebaseapp.com",
             projectId: "travel-8eaef",
             storageBucket: "travel-8eaef.firebasestorage.app",
@@ -118,7 +121,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.7</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.10</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -644,7 +647,7 @@
                     if(item) { 
                         isEditingItem.value = true; 
                         editingItemIndex.value = index; 
-                        newItemData.value = { owner: user.value.uid, ...item }; // default owner to me if missing
+                        newItemData.value = { owner: user.value.uid, ...item }; 
                         
                         if(['todo','luggage'].includes(currentListType.value)) {
                             if(!newItemData.value.subStatus) newItemData.value.subStatus = {};
