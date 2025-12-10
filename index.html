@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v45 (Clean Config)</title>
+    <title>Trip Planner v45 (Weather Banner)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,35 +36,17 @@
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // ==========================================
-        // ⚠️ 關鍵步驟：請填入您的 Firebase 設定
-        // 請刪除下方的註解範例，並貼上您從 Firebase Console > Project Settings > General > Your apps > Config 複製的內容
+        // Firebase 設定 (Fixed Config)
         // ==========================================
-        
         const firebaseConfig = {
             apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
-  authDomain: "travel-8eaef.firebaseapp.com",
-  projectId: "travel-8eaef",
-  storageBucket: "travel-8eaef.firebasestorage.app",
-  messagingSenderId: "151062172132",
-  appId: "1:151062172132:web:9bcda7d1de3eec31b037f1",
-  measurementId: "G-CCGZFCJYQ8"
+            authDomain: "travel-8eaef.firebaseapp.com",
+            projectId: "travel-8eaef",
+            storageBucket: "travel-8eaef.firebasestorage.app",
+            messagingSenderId: "151062172132",
+            appId: "1:151062172132:web:9bcda7d1de3eec31b037f1",
+            measurementId: "G-CCGZFCJYQ8"
         };
-
-        // 檢查是否已填入設定 (防止未設定直接執行)
-        if (firebaseConfig.apiKey.includes("請在此貼上")) {
-            document.body.innerHTML = `
-                <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;text-align:center;padding:20px;font-family:sans-serif;color:#333;background:#f5f5f7;">
-                    <i class="fa-solid fa-gear fa-spin" style="font-size:50px;color:#6366f1;margin-bottom:20px;"></i>
-                    <h1 style="font-size:24px;margin-bottom:10px;">Setup Required / 需要設定</h1>
-                    <p style="max-width:300px;line-height:1.6;font-size:14px;color:#666;">
-                        請使用文字編輯器打開 <strong>index.html</strong><br>
-                        找到第 48 行的 <strong>firebaseConfig</strong><br>
-                        貼上您從 Firebase 後台取得的完整設定。
-                    </p>
-                </div>
-            `;
-            throw new Error("Configuration Missing");
-        }
 
         try {
             const app = initializeApp(firebaseConfig);
@@ -86,7 +68,8 @@
                         'accent-light': 'var(--accent-light)',
                         'text-main': '#1F2937', 
                         'text-sec': '#6B7280', 
-                        'input-bg': '#FFFFFF'
+                        'input-bg': '#FFFFFF',
+                        'weather-blue': '#009FE3' // Custom blue for weather banner
                     },
                     boxShadow: { 'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.1)' }
                 }
@@ -124,10 +107,6 @@
         .hidden-load { opacity: 0; pointer-events: none; }
         [v-cloak] { display: none; }
         button, .bg-accent { transition: background-color 0.3s ease, color 0.3s ease; }
-        
-        /* Iframe Container */
-        .windy-container { width: 100%; height: 200px; border-radius: 1rem; overflow: hidden; border: 1px solid #E5E7EB; margin-bottom: 0.5rem; }
-        .windy-iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body class="selection:bg-accent selection:text-white">
@@ -143,7 +122,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.13</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.14</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -207,10 +186,18 @@
                 </div>
                 
                 <div class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
-                    <!-- Windy Embed Only -->
-                    <div class="px-4 pt-2 mb-4">
-                        <div class="windy-container relative shadow-sm">
-                            <iframe class="windy-iframe" :src="windyEmbedUrl"></iframe>
+                    <!-- New Weather Banner (Blue Box Style) -->
+                    <div @click="window.open(windyFullUrl)" class="mx-4 mt-2 mb-4 p-4 rounded-2xl text-white flex justify-between items-center shadow-lg cursor-pointer active:scale-[0.98] transition-transform relative overflow-hidden bg-weather-blue border-2 border-gray-700">
+                        <div class="flex items-center gap-4 relative z-10">
+                            <i class="fa-solid fa-cloud-sun text-4xl"></i>
+                            <div>
+                                <div class="text-3xl font-black">{{ currentWeather.temp }}°C</div>
+                                <div class="text-xs font-bold opacity-90 tracking-wide">{{ currentTrip.destination || 'Destination' }}</div>
+                            </div>
+                        </div>
+                        <div class="text-right relative z-10">
+                            <div class="text-sm font-black">最高 {{ currentWeather.high }}°</div>
+                            <div class="text-sm font-bold opacity-90">最低 {{ currentWeather.low }}°</div>
                         </div>
                     </div>
 
