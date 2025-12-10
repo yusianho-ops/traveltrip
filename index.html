@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v45 (Weather Banner)</title>
+    <title>Trip Planner v47 (Config Fixed)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -25,6 +25,7 @@
             if(loading && !loading.classList.contains('hidden-load')) {
                 loading.innerHTML = `<div style="color:red; padding:20px; text-align:center;"><i class="fa-solid fa-bug text-4xl mb-2"></i><br><strong>ERROR</strong><br><small>${msg}</small></div>`;
             }
+            // 讓 Vue 也能捕捉到錯誤
             return false;
         };
     </script>
@@ -36,10 +37,10 @@
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // ==========================================
-        // Firebase 設定 (Fixed Config)
+        // ⚠️ Firebase 設定 (已修正為 AIzaSyCp3... 配合 travel-8eaef)
         // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
+            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI", // 修正後的 Key
             authDomain: "travel-8eaef.firebaseapp.com",
             projectId: "travel-8eaef",
             storageBucket: "travel-8eaef.firebasestorage.app",
@@ -54,7 +55,10 @@
             const db = getFirestore(app);
             window.fb = { auth, db, signInAnonymously, signOut, onAuthStateChanged, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc };
             window.dispatchEvent(new Event('firebase-ready'));
-        } catch (e) { console.error(e); alert("Firebase Init Failed: " + e.message); }
+        } catch (e) { 
+            console.error(e); 
+            alert("Firebase Init Failed: " + e.message); 
+        }
     </script>
 
     <script>
@@ -69,7 +73,7 @@
                         'text-main': '#1F2937', 
                         'text-sec': '#6B7280', 
                         'input-bg': '#FFFFFF',
-                        'weather-blue': '#009FE3' // Custom blue for weather banner
+                        'weather-blue': '#009FE3'
                     },
                     boxShadow: { 'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.1)' }
                 }
@@ -107,6 +111,14 @@
         .hidden-load { opacity: 0; pointer-events: none; }
         [v-cloak] { display: none; }
         button, .bg-accent { transition: background-color 0.3s ease, color 0.3s ease; }
+        
+        /* Iframe Container */
+        .windy-container { width: 100%; height: 200px; border-radius: 1rem; overflow: hidden; border: 1px solid #E5E7EB; margin-bottom: 0.5rem; }
+        .windy-iframe { width: 100%; height: 100%; border: none; }
+        
+        /* Snap Scroll for Photos */
+        .snap-x { scroll-snap-type: x mandatory; }
+        .snap-center { scroll-snap-align: center; }
     </style>
 </head>
 <body class="selection:bg-accent selection:text-white">
@@ -122,7 +134,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.14</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.16</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -186,18 +198,19 @@
                 </div>
                 
                 <div class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
-                    <!-- New Weather Banner (Blue Box Style) -->
-                    <div @click="window.open(windyFullUrl)" class="mx-4 mt-2 mb-4 p-4 rounded-2xl text-white flex justify-between items-center shadow-lg cursor-pointer active:scale-[0.98] transition-transform relative overflow-hidden bg-weather-blue border-2 border-gray-700">
+                    <!-- Real Weather Banner (Matched Color) -->
+                    <div @click="window.open(windyFullUrl)" class="mx-4 mt-2 mb-4 p-4 rounded-2xl text-white flex justify-between items-center shadow-lg cursor-pointer active:scale-[0.98] transition-transform relative overflow-hidden border-2 border-white/20" style="background-color: var(--accent)">
                         <div class="flex items-center gap-4 relative z-10">
-                            <i class="fa-solid fa-cloud-sun text-4xl"></i>
+                            <i :class="realWeather.icon" class="text-4xl"></i>
                             <div>
-                                <div class="text-3xl font-black">{{ currentWeather.temp }}°C</div>
+                                <div class="text-3xl font-black">{{ realWeather.temp }}°C</div>
                                 <div class="text-xs font-bold opacity-90 tracking-wide">{{ currentTrip.destination || 'Destination' }}</div>
                             </div>
                         </div>
                         <div class="text-right relative z-10">
-                            <div class="text-sm font-black">最高 {{ currentWeather.high }}°</div>
-                            <div class="text-sm font-bold opacity-90">最低 {{ currentWeather.low }}°</div>
+                            <div class="text-xs font-bold opacity-80 mb-1"><i class="fa-solid fa-cloud-rain"></i> {{ realWeather.rain }}mm</div>
+                            <div class="text-sm font-black">H: {{ realWeather.high }}°</div>
+                            <div class="text-sm font-bold opacity-90">L: {{ realWeather.low }}°</div>
                         </div>
                     </div>
 
@@ -217,7 +230,7 @@
                             <div @click="openTool('budget')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-wallet text-2xl mb-1 text-accent"></i><span class="font-bold text-xs text-text-main">{{ t('budget') }}</span></div>
                             <div @click="showTranslationModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-language text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('translation') }}</span></div>
                             <div @click="currentView = 'flights'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer border border-transparent hover:border-accent transition-colors"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('flights') }}</span></div>
-                            <div @click="showHotelModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('hotels') }}</span></div>
+                            <div @click="currentView = 'hotels'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('hotels') }}</span></div>
                             <div @click="currentView = 'notes_menu'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-note-sticky text-2xl mb-1 text-yellow-500"></i><span class="font-bold text-xs text-text-main">{{ t('notes') }}</span></div>
                             <div @click="openTool('vouchers')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-ticket text-2xl mb-1 text-orange-400"></i><span class="font-bold text-xs text-text-main">{{ t('vouchers') }}</span></div>
                         </div>
@@ -239,7 +252,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: GENERIC LIST (Linked Members) -->
+            <!-- VIEW: GENERIC LIST (Linked Members - Auto Check Logic) -->
             <div v-if="currentView === 'generic_list'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
                     <button @click="currentView = 'notes_menu'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
@@ -250,11 +263,14 @@
                     
                     <div v-for="(item, i) in getGenericList()" :key="i" class="bg-white rounded-2xl p-4 shadow-soft">
                         <div class="flex items-start gap-3">
-                            <input v-if="['todo','luggage'].includes(currentListType)" type="checkbox" :checked="item.done" disabled class="w-6 h-6 accent-accent rounded-lg opacity-60">
+                            <!-- Main Checkbox (Read Only for Todo/Luggage) -->
+                            <div v-if="['todo','luggage'].includes(currentListType)" class="w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0" :class="item.done ? 'bg-accent border-accent' : 'border-gray-300'">
+                                <i v-if="item.done" class="fa-solid fa-check text-white text-sm"></i>
+                            </div>
                             <input v-else type="checkbox" v-model="item.done" @change="syncUpdate" class="w-6 h-6 accent-accent rounded-lg">
                             
                             <div class="flex-1 overflow-hidden" @click="item.address ? openMap(item.address + ' ' + item.text) : null">
-                                <div class="font-bold text-lg leading-tight" :class="{'opacity-30 line-through': item.done}">{{ item.text }}</div>
+                                <div class="font-bold text-lg leading-tight transition-all duration-300" :class="{'opacity-30 line-through': item.done}">{{ item.text }}</div>
                                 <div v-if="item.address" class="text-xs text-gray-500 truncate mt-1"><i class="fa-solid fa-location-dot text-red-400"></i> {{ item.address }}</div>
                                 
                                 <div v-if="['places','shopping'].includes(currentListType) && item.owner" class="mt-1">
@@ -267,11 +283,12 @@
                             <button @click="removeGenericItem(i)" class="w-8 h-8 rounded-full bg-gray-50 text-red-300 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
 
+                        <!-- Sub-Checkboxes for Members (Todo/Luggage) -->
                         <div v-if="['todo','luggage'].includes(currentListType) && item.subStatus" class="mt-3 pt-3 border-t border-dashed border-gray-100 flex flex-wrap gap-2">
                             <div v-for="(status, memberId) in item.subStatus" :key="memberId" 
                                  @click="toggleSubItem(item, memberId)"
                                  class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg cursor-pointer active:scale-95 transition-transform"
-                                 :class="status ? 'bg-indigo-50 text-accent ring-1 ring-accent' : 'text-gray-400'">
+                                 :class="status ? 'bg-accent/10 text-accent ring-1 ring-accent' : 'text-gray-400 ring-1 ring-gray-200'">
                                 <div class="w-3 h-3 rounded border flex items-center justify-center" :class="status ? 'bg-accent border-accent' : 'border-gray-300 bg-white'">
                                     <i v-if="status" class="fa-solid fa-check text-[8px] text-white"></i>
                                 </div>
@@ -286,162 +303,120 @@
 
             <!-- VIEW: FLIGHTS (Full Page) -->
             <div v-if="currentView === 'flights'" class="flex flex-col h-screen bg-main-bg">
+                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('flights') }}</h2><button @click="showAddFlightModal=true" class="w-10 h-10 flex items-center justify-center text-accent active:scale-90"><i class="fa-solid fa-plus text-xl"></i></button></div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24"><div v-if="!currentTrip.flights || currentTrip.flights.length === 0" class="text-center text-gray-400 font-bold mt-10 opacity-50">{{ t('noFlights') }}</div><div v-for="(f, i) in (currentTrip.flights||[])" :key="i" @click="openFlightDetail(f, i)" class="bg-white rounded-3xl overflow-hidden shadow-soft cursor-pointer active:scale-[0.99] transition-transform relative border border-gray-100"><div class="bg-accent-light/30 p-4 border-b border-gray-100 flex justify-between items-center"><span class="font-bold text-gray-500 text-xs tracking-widest uppercase">{{ f.airline || t('airline') }}</span><span class="bg-white/50 w-8 h-8 rounded-full flex items-center justify-center text-accent"><i class="fa-solid fa-pen text-xs"></i></span></div><div class="p-6"><div class="text-center mb-6"><div class="text-5xl font-black text-text-main tracking-tight">{{ f.code || 'FLT' }}</div></div><div class="flex justify-between items-center mb-6 px-2"><div class="text-center"><div class="text-3xl font-black text-text-main uppercase">{{ f.origin || 'DEP' }}</div><div class="text-xl font-bold text-text-main mt-1">{{ f.time || '--:--' }}</div><div class="mt-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full inline-block">{{ f.originCity || t('originCity') }}</div></div><div class="flex-1 flex flex-col items-center px-4 relative -top-3 gap-1"><div class="text-[10px] text-gray-400 font-bold mb-1">{{ t('direct') }}</div><div class="w-full h-0.5 bg-gray-200 relative my-1"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div><div class="text-[10px] text-gray-400 font-bold mt-1">{{ formatDate(f.date) }}</div></div><div class="text-center"><div class="text-3xl font-black text-text-main uppercase">{{ f.dest || 'ARR' }}</div><div class="text-xl font-bold text-text-main mt-1">{{ f.arrTime || '--:--' }}</div><div class="mt-1 px-2 py-0.5 bg-orange-400 text-white text-[10px] font-bold rounded-full inline-block">{{ f.destCity || t('destCity') }}</div></div></div><div class="grid grid-cols-2 gap-4 border-t border-dashed border-gray-200 pt-4"><div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('baggage') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-suitcase text-sm text-accent"></i> {{ f.baggage || '-' }}</div></div><div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('aircraft') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-plane text-sm text-accent"></i> {{ f.aircraft || '-' }}</div></div><div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('price') }}</div><div class="font-black text-lg text-text-main">NT${{ f.cost || '-' }}</div></div><div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('date') }}</div><div class="font-black text-lg text-text-main">{{ formatDate(f.date) }}</div></div></div></div></div></div></div>
+            
+            <!-- VIEW: HOTELS (Full List Page) -->
+            <div v-if="currentView === 'hotels'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
                     <button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
-                    <h2 class="font-black text-xl text-text-main">{{ t('flights') }}</h2>
-                    <button @click="showAddFlightModal=true" class="w-10 h-10 flex items-center justify-center text-accent active:scale-90"><i class="fa-solid fa-plus text-xl"></i></button>
+                    <h2 class="font-black text-xl text-text-main">{{ t('hotels') }}</h2>
+                    <button @click="showAddHotelModal=true" class="w-10 h-10 flex items-center justify-center text-accent active:scale-90"><i class="fa-solid fa-plus text-xl"></i></button>
                 </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-                    <div v-if="!currentTrip.flights || currentTrip.flights.length === 0" class="text-center text-gray-400 font-bold mt-10 opacity-50">{{ t('noFlights') }}</div>
+                <div class="p-4 flex-1 overflow-y-auto space-y-4 pb-24">
+                     <div v-if="!currentTrip.hotels || currentTrip.hotels.length === 0" class="text-center text-gray-400 font-bold mt-10 opacity-50">{{ t('noHotels') || 'No Hotels' }}</div>
+                     <div v-for="(h,i) in (currentTrip.hotels||[])" :key="i" @click="openHotelDetail(h, i)" class="bg-white rounded-2xl overflow-hidden shadow-soft relative group cursor-pointer active:scale-[0.99] transition-transform">
+                        <div class="h-32 bg-gray-200 relative">
+                             <img v-if="h.photos && h.photos.length > 0" :src="h.photos[0]" class="w-full h-full object-cover">
+                             <div v-else class="flex items-center justify-center h-full text-gray-400"><i class="fa-solid fa-hotel text-3xl"></i></div>
+                        </div>
+                        <div class="p-4">
+                            <div class="font-black text-lg text-text-main">{{ h.name }}</div>
+                            <div class="text-xs text-gray-500 mb-2"><i class="fa-solid fa-location-dot"></i> {{ h.address || 'No Address' }}</div>
+                            <div class="flex justify-between text-xs font-bold bg-gray-50 p-2 rounded-lg"><span>IN: {{ formatDate(h.checkIn) }}</span><span>OUT: {{ formatDate(h.checkOut) }}</span></div>
+                        </div>
+                     </div>
+                </div>
+            </div>
+
+            <!-- VIEW: HOTEL DETAIL (New Pro Design) -->
+            <div v-if="currentView === 'hotel_detail'" class="flex flex-col h-screen bg-main-bg">
+                <div class="relative h-64 bg-gray-200 flex-shrink-0">
+                    <!-- Photo Carousel -->
+                    <div class="w-full h-full flex overflow-x-auto snap-x scrollbar-hide">
+                        <div v-if="!editHotelData.photos || editHotelData.photos.length === 0" class="w-full h-full flex items-center justify-center text-gray-400 flex-shrink-0 snap-center bg-gray-100">
+                            <div class="text-center"><i class="fa-solid fa-image text-4xl mb-2"></i><br>No Photos</div>
+                        </div>
+                        <div v-else v-for="(p, idx) in editHotelData.photos" :key="idx" class="w-full h-full flex-shrink-0 snap-center relative">
+                             <img :src="p" class="w-full h-full object-cover">
+                             <button @click.stop="removeHotelPhoto(idx)" class="absolute top-20 right-4 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center z-20"><i class="fa-solid fa-trash"></i></button>
+                             <div class="absolute bottom-4 right-4 bg-black/50 text-white text-xs px-2 py-1 rounded-full">{{ idx+1 }}/{{ editHotelData.photos.length }}</div>
+                        </div>
+                    </div>
                     
-                    <div v-for="(f, i) in (currentTrip.flights||[])" :key="i" @click="openFlightDetail(f, i)" class="bg-white rounded-3xl overflow-hidden shadow-soft cursor-pointer active:scale-[0.99] transition-transform relative border border-gray-100">
-                        <div class="bg-accent-light/30 p-4 border-b border-gray-100 flex justify-between items-center">
-                            <span class="font-bold text-gray-500 text-xs tracking-widest uppercase">{{ f.airline || t('airline') }}</span>
-                            <span class="bg-white/50 w-8 h-8 rounded-full flex items-center justify-center text-accent"><i class="fa-solid fa-pen text-xs"></i></span>
+                    <!-- Top Buttons -->
+                    <button @click="saveHotelDetail" class="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-text-main shadow-sm z-30"><i class="fa-solid fa-arrow-left"></i></button>
+                    <!-- Add Photo Button -->
+                     <label v-if="(!editHotelData.photos || editHotelData.photos.length < 3)" class="absolute top-4 right-4 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-text-main shadow-sm z-30 cursor-pointer">
+                        <input type="file" accept="image/*" class="hidden" @change="handleHotelPhoto">
+                        <i class="fa-solid fa-camera"></i>
+                    </label>
+                </div>
+                
+                <div class="flex-1 bg-white rounded-t-3xl -mt-6 relative z-10 p-6 overflow-y-auto pb-24 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+                    <div class="flex justify-between items-start mb-1">
+                        <input v-model="editHotelData.name" class="text-2xl font-black text-text-main bg-transparent border-b border-transparent focus:border-gray-200 focus:bg-gray-50 w-full mb-1" placeholder="Hotel Name">
+                        <button @click="editHotelData.isEditing = !editHotelData.isEditing" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                    <div class="flex items-center text-xs text-gray-500 mb-6 font-bold">
+                        <i class="fa-solid fa-location-dot mr-1 text-red-400"></i>
+                        <input v-model="editHotelData.address" class="bg-transparent border-none p-0 w-full text-gray-500" placeholder="Address">
+                    </div>
+
+                    <div class="flex gap-4 mb-6">
+                        <div class="flex-1 bg-white border-l-4 border-green-400 p-3 shadow-soft rounded-r-xl">
+                            <div class="text-[10px] font-bold text-gray-400 uppercase">CHECK-IN</div>
+                            <input type="date" v-model="editHotelData.checkIn" class="bg-transparent border-none p-0 font-black text-lg w-full">
+                            <div class="text-xs font-bold text-text-main">15:00</div>
                         </div>
-                        <div class="p-6">
-                            <div class="text-center mb-6">
-                                <div class="text-5xl font-black text-text-main tracking-tight">{{ f.code || 'FLT' }}</div>
-                            </div>
-                            <div class="flex justify-between items-center mb-6 px-2">
-                                <div class="text-center">
-                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.origin || 'DEP' }}</div>
-                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.time || '--:--' }}</div>
-                                    <div class="mt-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full inline-block">{{ f.originCity || t('originCity') }}</div>
-                                </div>
-                                <div class="flex-1 flex flex-col items-center px-4 relative -top-3 gap-1">
-                                    <div class="text-[10px] text-gray-400 font-bold mb-1">{{ t('direct') }}</div>
-                                    <div class="w-full h-0.5 bg-gray-200 relative my-1"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
-                                    <div class="text-[10px] text-gray-400 font-bold mt-1">{{ formatDate(f.date) }}</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.dest || 'ARR' }}</div>
-                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.arrTime || '--:--' }}</div>
-                                    <div class="mt-1 px-2 py-0.5 bg-orange-400 text-white text-[10px] font-bold rounded-full inline-block">{{ f.destCity || t('destCity') }}</div>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4 border-t border-dashed border-gray-200 pt-4">
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('baggage') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-suitcase text-sm text-accent"></i> {{ f.baggage || '-' }}</div></div>
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('aircraft') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-plane text-sm text-accent"></i> {{ f.aircraft || '-' }}</div></div>
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('price') }}</div><div class="font-black text-lg text-text-main">NT${{ f.cost || '-' }}</div></div>
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('date') }}</div><div class="font-black text-lg text-text-main">{{ formatDate(f.date) }}</div></div>
-                            </div>
+                         <div class="flex-col justify-center items-center flex">
+                            <span class="font-black text-lg">{{ getDays(editHotelData.checkIn, editHotelData.checkOut) }}</span>
+                            <span class="text-[10px] text-gray-400 font-bold">Nights</span>
+                            <i class="fa-solid fa-arrow-right text-gray-300 mt-1"></i>
+                        </div>
+                        <div class="flex-1 bg-white border-r-4 border-red-400 p-3 shadow-soft rounded-l-xl text-right">
+                            <div class="text-[10px] font-bold text-gray-400 uppercase">CHECK-OUT</div>
+                            <input type="date" v-model="editHotelData.checkOut" class="bg-transparent border-none p-0 font-black text-lg w-full text-right">
+                            <div class="text-xs font-bold text-text-main">11:00</div>
                         </div>
                     </div>
+
+                    <div class="bg-gray-50 p-6 rounded-2xl mb-6">
+                         <div class="flex justify-between items-end mb-2">
+                             <span class="font-bold text-gray-400 text-xs">Total</span>
+                             <div class="flex items-baseline">
+                                 <span class="font-bold text-gray-400 mr-2">NT$</span>
+                                 <input v-model="editHotelData.cost" type="number" class="bg-transparent border-none p-0 text-4xl font-black text-right w-32" placeholder="0">
+                             </div>
+                         </div>
+                         <div class="flex justify-between items-center text-xs font-bold text-gray-400 border-t border-gray-200 pt-3 mt-1">
+                             <span>Ref: <input v-model="editHotelData.refNumber" placeholder="B-123456" class="bg-transparent border-none w-20 inline"></span>
+                             <span>每人均分 NT$ {{ Math.round((editHotelData.cost || 0) / (currentTrip.members?.length || 1)) }}</span>
+                         </div>
+                          <div class="text-right text-xs font-bold text-green-500 mt-1">
+                             每人每晚 NT$ {{ Math.round(((editHotelData.cost || 0) / (currentTrip.members?.length || 1)) / (getDays(editHotelData.checkIn, editHotelData.checkOut) || 1)) }}
+                         </div>
+                    </div>
+                    
+                    <button @click="deleteCurrentHotel" class="w-full py-4 text-red-500 font-black bg-red-50 rounded-2xl">DELETE HOTEL</button>
                 </div>
             </div>
 
-            <!-- VIEW: BUDGET -->
-            <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg">
-                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('budget') }}</h2><div class="w-10"></div></div>
-                <div class="p-4 overflow-y-auto pb-24 space-y-4">
-                    <div class="bg-text-main text-white p-6 rounded-3xl shadow-lg text-center">
-                        <p class="text-xs font-bold opacity-70 mb-1">{{ t('totalExpense') }} (TWD)</p>
-                        <p class="text-4xl font-black mb-2">NT$ {{ totalExpense }}</p>
-                        <div v-if="Object.keys(groupedTotals).length > 0" class="border-t border-white/20 pt-2 flex flex-wrap justify-center gap-2">
-                            <span v-for="(amount, curr) in groupedTotals" :key="curr" class="text-xs font-bold bg-white/20 px-2 py-1 rounded">{{ curr }} Total: {{ amount }}</span>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-2xl p-4 shadow-soft">
-                        <h3 class="font-bold text-sm mb-3 text-gray-400">{{ t('members') }}</h3>
-                        <div class="flex gap-2 mb-3"><input v-model="newMemberName" :placeholder="t('name')" class="flex-1 bg-gray-50 border-none text-sm"><button @click="addMember" class="bg-gray-200 w-10 rounded-xl font-bold">+</button></div>
-                        <div class="flex flex-wrap gap-2"><span v-for="(m, i) in (currentTrip.members || ['Me'])" :key="i" class="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold flex items-center gap-2">{{ getDisplayName(m) }} <button @click="removeMember(i)" v-if="m !== 'Me'" class="text-red-400">x</button></span></div>
-                    </div>
-                    <div class="space-y-3">
-                        <h3 class="font-bold text-sm text-gray-400 px-1">{{ t('history') }}</h3>
-                        <div v-for="(exp, i) in (currentTrip.expenses || []).slice().reverse()" :key="i" class="bg-white p-4 rounded-2xl flex justify-between items-center shadow-soft">
-                            <div><span class="font-bold block text-text-main">{{ exp.note }}</span><span class="text-xs text-gray-400 block mt-0.5">{{ getDisplayName(exp.payer) }} {{ t('paidFor') }} {{ (exp.splitters||[]).map(s=>getDisplayName(s)).join(', ') }}</span><span v-if="exp.currency && exp.currency !== 'TWD'" class="text-xs font-bold text-accent bg-accent-light px-1 rounded">{{ exp.original }} {{ exp.currency }}</span></div>
-                            <div class="text-right"><span class="font-black block text-text-main">NT$ {{ exp.twd }}</span><button @click="deleteExpense(i)" class="text-red-300 text-xs mt-1"><i class="fa-solid fa-trash"></i></button></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: VOUCHERS -->
-            <div v-if="currentView === 'vouchers'" class="flex flex-col h-screen bg-main-bg">
-                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('vouchers') }}</h2><div class="w-10"></div></div>
-                <div class="p-4 flex-1 overflow-y-auto pb-24">
-                    <div class="bg-white p-4 rounded-2xl shadow-soft mb-4">
-                        <p class="text-xs font-bold text-accent mb-2">{{ isEditingVoucher ? t('update') : t('add') }}</p>
-                        <input v-model="newVoucher.title" :placeholder="t('voucherTitle')" class="mb-2 bg-gray-50 border-none text-sm">
-                        <input v-model="newVoucher.note" :placeholder="t('voucherNote')" class="mb-2 bg-gray-50 border-none text-sm">
-                        <div class="flex gap-2 mb-2">
-                            <div class="relative flex-1 bg-gray-100 rounded-xl flex items-center justify-center cursor-pointer text-xs font-bold text-gray-500 h-10 overflow-hidden">
-                                <input type="file" @change="handleVoucherFile" accept="image/*,application/pdf" class="absolute inset-0 opacity-0 cursor-pointer">
-                                <span v-if="newVoucher.file"><i class="fa-solid fa-check text-green-500"></i> {{ t('fileReady') }}</span>
-                                <span v-else><i class="fa-solid fa-cloud-arrow-up"></i> PDF/IMG</span>
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button v-if="isEditingVoucher" @click="cancelEditVoucher" class="flex-1 bg-gray-200 text-gray-500 py-3 rounded-xl font-bold">{{ t('cancel') }}</button>
-                            <button @click="saveVoucher" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold">{{ isEditingVoucher ? t('update') : 'ADD' }}</button>
-                        </div>
-                    </div>
-                    <div class="space-y-3">
-                        <div v-for="(v, i) in (currentTrip.vouchers || [])" :key="i" class="bg-white rounded-2xl p-4 shadow-soft flex justify-between items-start relative group">
-                            <div class="flex-1 pr-2">
-                                <h3 class="font-black text-lg truncate">{{ v.title }}</h3>
-                                <p class="text-xs text-gray-500 mb-2">{{ v.note }}</p>
-                                <button v-if="v.file" @click="openFile(v.file)" class="text-xs bg-orange-50 text-orange-500 px-2 py-1 rounded font-bold flex items-center gap-1 w-fit">
-                                    <i :class="v.fileType === 'pdf' ? 'fa-solid fa-file-pdf' : 'fa-solid fa-image'"></i> {{ v.fileType === 'pdf' ? t('openPdf') : t('viewImg') }}
-                                </button>
-                            </div>
-                            <div class="flex gap-2">
-                                <button @click="editVoucher(v, i)" class="text-blue-300 w-8 h-8 flex items-center justify-center bg-blue-50 rounded-full"><i class="fa-solid fa-pen"></i></button>
-                                <button @click="removeVoucher(i)" class="text-red-300 w-8 h-8 flex items-center justify-center bg-red-50 rounded-full"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MODAL: ADD TRIP -->
-            <div v-if="isModalOpen" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm"><div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4"><h2 class="text-2xl font-black text-center text-text-main">{{ t('newTrip') }}</h2><input v-model="form.destination" :placeholder="t('destination')" class="bg-gray-50 border-none input-center"><div class="flex gap-2"><input type="date" required v-model="form.startDate" class="bg-gray-50 border-none"><input type="date" required v-model="form.endDate" class="bg-gray-50 border-none"></div><div class="flex gap-2 pt-4"><button @click="isModalOpen = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button><button @click="createCloudTrip" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">CREATE</button></div></div></div>
-            
-            <!-- MODAL: ADD SIMPLE FLIGHT -->
-            <div v-if="showAddFlightModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
+            <!-- MODAL: ADD SIMPLE HOTEL (Floating) -->
+            <div v-if="showAddHotelModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
                 <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4">
-                    <h2 class="text-xl font-black text-center text-text-main">{{ t('addFlight') }}</h2>
-                    <input v-model="simpleFlight.airline" :placeholder="t('airline')" class="bg-gray-50 border-none input-center">
-                    <input v-model="simpleFlight.code" :placeholder="t('flightNo')" class="bg-gray-50 border-none uppercase input-center">
-                    <div class="flex gap-2"><input type="date" v-model="simpleFlight.date" class="bg-gray-50 border-none"><input type="time" v-model="simpleFlight.time" class="bg-gray-50 border-none"></div>
+                    <h2 class="text-xl font-black text-center text-text-main">{{ t('addHotel') }}</h2>
+                    <input v-model="newHotel.name" :placeholder="t('hotelName')" class="bg-gray-50 border-none input-center">
+                    <input v-model="newHotel.address" :placeholder="t('hotelAddr')" class="bg-gray-50 border-none input-center">
+                    <div class="flex gap-2"><input type="date" required v-model="newHotel.checkIn" class="bg-gray-50 border-none"><input type="date" required v-model="newHotel.checkOut" class="bg-gray-50 border-none"></div>
                     <div class="flex gap-2 pt-2">
-                        <button @click="showAddFlightModal = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button>
-                        <button @click="addSimpleFlight" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">ADD</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MODAL: EDIT FLIGHT DETAIL -->
-            <div v-if="showEditFlightModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                        <span class="font-black text-text-main">{{ t('editFlightDetails') }}</span>
-                        <button @click="saveFlightDetail" class="text-accent font-bold">{{ t('done') }}</button>
-                    </div>
-                    <div class="p-6 overflow-y-auto space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                             <div><label class="text-[10px] font-bold text-gray-400">{{ t('airline') }}</label><input v-model="editFlightData.airline" class="bg-gray-50 border-none input-center"></div>
-                             <div><label class="text-[10px] font-bold text-gray-400">{{ t('flightNo') }}</label><input v-model="editFlightData.code" class="bg-gray-50 border-none uppercase input-center"></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('originCity') }}</label><input v-model="editFlightData.originCity" placeholder="Taipei" class="text-center bg-gray-50 border-none"></div>
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('destCity') }}</label><input v-model="editFlightData.destCity" placeholder="Osaka" class="text-center bg-gray-50 border-none"></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('depTime') }}</label><input type="time" v-model="editFlightData.time" class="bg-gray-50 border-none"></div>
-                            <div><label class="text-[10px] font-bold text-gray-400">{{ t('arrTime') }}</label><input type="time" v-model="editFlightData.arrTime" class="bg-gray-50 border-none"></div>
-                        </div>
-                        <div><label class="text-[10px] font-bold text-gray-400">{{ t('baggage') }}</label><input v-model="editFlightData.baggage" placeholder="15kg" class="bg-gray-50 border-none"></div>
-                        <div><label class="text-[10px] font-bold text-gray-400">{{ t('aircraft') }}</label><input v-model="editFlightData.aircraft" placeholder="A321" class="bg-gray-50 border-none"></div>
-                        <div><label class="text-[10px] font-bold text-gray-400">{{ t('totalCost') }}</label><input v-model="editFlightData.cost" placeholder="4633" class="bg-gray-50 border-none font-black text-lg"></div>
-                        
-                        <button @click="deleteCurrentFlight" class="w-full py-3 text-red-500 font-bold border-2 border-red-50 rounded-xl mt-6">{{ t('deleteFlight') }}</button>
+                        <button @click="showAddHotelModal = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button>
+                        <button @click="addHotel" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">ADD</button>
                     </div>
                 </div>
             </div>
             
-            <!-- MODAL: ADD/EDIT GENERIC ITEM (Notes with Member Selector) -->
+            <!-- MODAL: ADD/EDIT GENERIC ITEM -->
             <div v-if="showItemModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
                 <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4">
                     <h2 class="text-xl font-black text-center text-text-main">{{ isEditingItem ? t('editItem') : t(itemModalConfig.titleKey) }}</h2>
@@ -453,17 +428,14 @@
                             <option v-for="m in (currentTrip.members || ['Me'])" :key="m" :value="m">{{ getDisplayName(m) }}</option>
                         </select>
                     </div>
-
                     <div v-if="currentListType === 'places'">
                         <input v-model="newItemData.address" :placeholder="t('address')" class="bg-gray-50 border-none input-center mt-2">
                     </div>
-
                     <div class="relative w-full h-32 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden cursor-pointer mt-2 border-2 border-dashed border-gray-300">
                         <input type="file" accept="image/*" @change="handleItemPhoto" class="absolute inset-0 opacity-0 cursor-pointer">
                         <img v-if="newItemData.photo" :src="newItemData.photo" class="w-full h-full object-cover">
                         <div v-else class="text-gray-400 flex flex-col items-center"><i class="fa-solid fa-camera text-2xl mb-1"></i><span>{{ t('addPhoto') }}</span></div>
                     </div>
-
                     <div class="flex gap-2 pt-2">
                         <button @click="showItemModal = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button>
                         <button @click="saveGenericItem" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">{{ isEditingItem ? t('update') : t('add') }}</button>
@@ -486,12 +458,10 @@
             <!-- SETTINGS: THEMES & LANGUAGE -->
             <div v-if="showSettings" class="fixed inset-0 bg-white z-50 p-6 flex flex-col">
                 <div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-black text-text-main">{{ t('settings') }}</h2><button @click="showSettings = false" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold">✕</button></div>
-                
                 <div class="mb-8">
                     <label class="block font-bold mb-3 text-gray-400 text-sm tracking-wider">{{ t('userName') }}</label>
                     <input v-model="userName" @change="saveUserName" placeholder="Your Name" class="bg-gray-50 border-none text-lg font-bold">
                 </div>
-
                 <div class="mb-8">
                     <label class="block font-bold mb-3 text-gray-400 text-sm tracking-wider">{{ t('theme') }}</label>
                     <div class="grid grid-cols-5 gap-2">
@@ -549,27 +519,38 @@
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
         const i18n = {
-            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅', translation:'翻譯' },
-            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', notes:'NOTES', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split', todo:'To-Do', luggage:'Luggage', places:'Places', emptyList:'Empty List', addTask:'Add Task', addLuggage:'Add Item', addPlace:'Add Place', addShopping:'Add Item', addPhoto:'Add Photo', address:'Address', editItem:'Edit Item', theme:'THEME', language:'LANGUAGE', userName:'USER NAME', classic:'Classic', postcard:'Postcard', dune:'Dune', seafoam:'Seafoam', saffron:'Saffron', translation:'Translate' },
-            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', notes:'メモ', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ', oneTicket:'同一予約', bagagge:'荷物', aircraft:'機材', price:'価格', direct:'直行便', date:'日付', editFlightDetails:'フライト編集', done:'完了', originCode:'出発コード', destCode:'到着コード', originCity:'出発都市', destCity:'到着都市', depTime:'出発時刻', arrTime:'到着時刻', baggage:'荷物', totalCost:'合計金額', deleteFlight:'フライト削除', noFlights:'フライトなし', editNote:'メモ編集', fileReady:'準備完了', viewImg:'画像表示', openPdf:'PDFを開く', payer:'支払者', split:'割り勘', todo:'ToDo', luggage:'荷物', places:'行きたい', emptyList:'リストなし', addTask:'タスク追加', addLuggage:'荷物追加', addPlace:'場所追加', addShopping:'買物追加', addPhoto:'写真追加', address:'住所', editItem:'項目編集', theme:'テーマ', language:'言語', userName:'ユーザー名', classic:'クラシック', postcard:'ポストカード', dune:'砂丘', seafoam:'シーフォーム', saffron:'サフラン', translation:'翻訳' },
-            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', notes:'메모', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모', oneTicket:'동일 예약', bagagge:'수하물', aircraft:'기종', price:'가격', direct:'직항', date:'날짜', editFlightDetails:'항공편 편집', done:'완료', originCode:'출발 코드', destCode:'도착 코드', originCity:'출발 도시', destCity:'도착 도시', depTime:'출발 시간', arrTime:'도착 시간', baggage:'수하물', totalCost:'총 비용', deleteFlight:'항공편 삭제', noFlights:'항공편 없음', editNote:'메모 편집', fileReady:'파일 준비됨', viewImg:'이미지 보기', openPdf:'PDF 열기', payer:'결제자', split:'분할', todo:'할일', luggage:'짐', places:'장소', emptyList:'항목 없음', addTask:'할일 추가', addLuggage:'짐 추가', addPlace:'장소 추가', addShopping:'쇼핑 추가', addPhoto:'사진 추가', address:'주소', editItem:'항목 편집', theme:'테마', language:'언어', userName:'사용자 이름', classic:'클래식', postcard:'엽서', dune:'사구', seafoam:'바다 거품', saffron:'사프란', translation:'번역' }
+            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅', translation:'翻譯', noHotels:'尚未新增住宿' },
+            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', notes:'NOTES', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split', todo:'To-Do', luggage:'Luggage', places:'Places', emptyList:'Empty List', addTask:'Add Task', addLuggage:'Add Item', addPlace:'Add Place', addShopping:'Add Item', addPhoto:'Add Photo', address:'Address', editItem:'Edit Item', theme:'THEME', language:'LANGUAGE', userName:'USER NAME', classic:'Classic', postcard:'Postcard', dune:'Dune', seafoam:'Seafoam', saffron:'Saffron', translation:'Translate', noHotels:'No hotels added' },
+            'ja': { trips:'旅行一覧', newTrip:'新しい旅', v:'チケット', settings:'設定', save:'保存', cancel:'キャンセル', destination:'目的地', weather:'天気', itinerary:'旅程表', budget:'予算', flights:'フライト', hotels:'宿泊', notes:'メモ', vouchers:'チケット', packing:'持ち物', enterId:'ID入力', noTrips:'旅行なし', enterItem:'入力...', paidFor:'代行', totalExpense:'合計', members:'メンバー', history:'履歴', note:'メモ', sightseeing:'観光', food:'食事', shopping:'買い物', name:'名前', update:'更新', add:'追加', flightNo:'便名', airline:'航空会社', addFlight:'フライト追加', hotelName:'ホテル名', hotelAddr:'住所', addHotel:'ホテル追加', voucherTitle:'タイトル', voucherNote:'メモ', oneTicket:'同一予約', bagagge:'荷物', aircraft:'機材', price:'価格', direct:'直行便', date:'日付', editFlightDetails:'フライト編集', done:'完了', originCode:'出発コード', destCode:'到着コード', originCity:'出発都市', destCity:'到着都市', depTime:'出発時刻', arrTime:'到着時刻', baggage:'荷物', totalCost:'合計金額', deleteFlight:'フライト削除', noFlights:'フライトなし', editNote:'メモ編集', fileReady:'準備完了', viewImg:'画像表示', openPdf:'PDFを開く', payer:'支払者', split:'割り勘', todo:'ToDo', luggage:'荷物', places:'行きたい', emptyList:'リストなし', addTask:'タスク追加', addLuggage:'荷物追加', addPlace:'場所追加', addShopping:'買物追加', addPhoto:'写真追加', address:'住所', editItem:'項目編集', theme:'テーマ', language:'言語', userName:'ユーザー名', classic:'クラシック', postcard:'ポストカード', dune:'砂丘', seafoam:'シーフォーム', saffron:'サフラン', translation:'翻訳', noHotels:'ホテルなし' },
+            'ko': { trips:'나의 여행', newTrip:'새 여행', v:'바우처', settings:'설정', save:'저장', cancel:'취소', destination:'목적지', weather:'날씨', itinerary:'일정', budget:'예산', flights:'항공편', hotels:'숙소', notes:'메모', vouchers:'티켓/바우처', packing:'준비물', enterId:'ID입력', noTrips:'여행 없음', enterItem:'입력...', paidFor:'대신 결제', totalExpense:'총액', members:'멤버', history:'기록', note:'메모', sightseeing:'관광', food:'식사', shopping:'쇼핑', name:'이름', update:'업데이트', add:'추가', flightNo:'편명', airline:'항공사', addFlight:'항공편 추가', hotelName:'호텔 이름', hotelAddr:'주소', addHotel:'숙소 추가', voucherTitle:'제목', voucherNote:'메모', oneTicket:'동일 예약', bagagge:'수하물', aircraft:'기종', price:'가격', direct:'직항', date:'날짜', editFlightDetails:'항공편 편집', done:'완료', originCode:'출발 코드', destCode:'도착 코드', originCity:'출발 도시', destCity:'도착 도시', depTime:'출발 시간', arrTime:'도착 시간', baggage:'수하물', totalCost:'총 비용', deleteFlight:'항공편 삭제', noFlights:'항공편 없음', editNote:'메모 편집', fileReady:'파일 준비됨', viewImg:'이미지 보기', openPdf:'PDF 열기', payer:'결제자', split:'분할', todo:'할일', luggage:'짐', places:'장소', emptyList:'항목 없음', addTask:'할일 추가', addLuggage:'짐 추가', addPlace:'장소 추가', addShopping:'쇼핑 추가', addPhoto:'사진 추가', address:'주소', editItem:'항목 편집', theme:'테마', language:'언어', userName:'사용자 이름', classic:'클래식', postcard:'엽서', dune:'사구', seafoam:'바다 거품', saffron:'사프란', translation:'번역', noHotels:'숙소 없음' }
         };
         const langNames = { 'zh-TW':'繁體中文', 'en':'English', 'ja':'日本語', 'ko':'한국어' };
         const themeConfig = { classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' }, postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } };
 
-        // City Data for Windy
+        // City Data for Weather
         const cityData = { 
             'taipei': { lat: 25.03, lon: 121.56, code: 'TPE' }, 'kaohsiung': { lat: 22.62, lon: 120.30, code: 'KHH' }, 'taichung': { lat: 24.14, lon: 120.68, code: 'RMQ' }, 'tokyo': { lat: 35.67, lon: 139.65, code: 'NRT' }, 'osaka': { lat: 34.69, lon: 135.50, code: 'KIX' }, 'fukuoka': { lat: 33.59, lon: 130.40, code: 'FUK' }, 'sapporo': { lat: 43.06, lon: 141.35, code: 'CTS' }, 'okinawa': { lat: 26.21, lon: 127.68, code: 'OKA' }, 'seoul': { lat: 37.56, lon: 126.97, code: 'ICN' }, 'busan': { lat: 35.17, lon: 129.07, code: 'PUS' }, 'jeju': { lat: 33.49, lon: 126.53, code: 'CJU' }, 'bangkok': { lat: 13.75, lon: 100.50, code: 'BKK' }, 'singapore': { lat: 1.35, lon: 103.81, code: 'SIN' }, 'hong kong': { lat: 22.31, lon: 114.16, code: 'HKG' }, 'macau': { lat: 22.19, lon: 113.54, code: 'MFM' }, 'los angeles': { lat: 34.05, lon: -118.24, code: 'LAX' }, 'new york': { lat: 40.71, lon: -74.00, code: 'JFK' }, 'london': { lat: 51.50, lon: -0.12, code: 'LHR' }, 'paris': { lat: 48.85, lon: 2.35, code: 'CDG' }
         };
         const getAirportCode = (city) => { if(!city) return ''; const lower = city.toLowerCase().trim(); return cityData[lower] ? cityData[lower].code : city.substring(0,3).toUpperCase(); };
+
+        // Weather Icon Helper
+        const getWeatherIcon = (code) => {
+            if (code === 0) return 'fa-solid fa-sun'; // Clear
+            if (code >= 1 && code <= 3) return 'fa-solid fa-cloud-sun'; // Cloudy
+            if (code >= 45 && code <= 48) return 'fa-solid fa-smog'; 
+            if (code >= 51 && code <= 67) return 'fa-solid fa-cloud-rain'; 
+            if (code >= 71 && code <= 77) return 'fa-solid fa-snowflake'; 
+            if (code >= 80 && code <= 82) return 'fa-solid fa-cloud-showers-heavy'; 
+            if (code >= 95) return 'fa-solid fa-bolt'; 
+            return 'fa-solid fa-cloud';
+        };
 
         createApp({
             setup() {
                 const user = ref(null); const trips = ref([]); const currentTrip = ref({});
                 const currentView = ref('home'); const loading = ref(false);
                 const isModalOpen = ref(false); const showSettings = ref(false);
-                const showCalculator = ref(false); const showHotelModal = ref(false);
-                const showTranslationModal = ref(false);
+                const showCalculator = ref(false); const showTranslationModal = ref(false);
                 const selectedDate = ref(''); const joinTripId = ref(''); 
                 const firebaseStatus = ref('connecting'); const errorMessage = ref('');
                 const loginBtnText = computed(() => firebaseStatus.value === 'connecting' ? 'Connecting...' : 'START');
@@ -580,20 +561,27 @@
                 const form = ref({ destination: '', startDate: '', endDate: '' });
                 const newItem = ref({ time: '10:00', text: '', category: 'sightseeing' });
                 
-                // Flight States
+                // Flight
                 const showAddFlightModal = ref(false);
                 const showEditFlightModal = ref(false);
                 const simpleFlight = ref({ code:'', airline:'', date:'', time:'' });
                 const editFlightData = ref({});
                 const editFlightIndex = ref(-1);
 
+                // Hotel (Updated)
+                const showAddHotelModal = ref(false);
+                const showHotelModal = ref(false); // Only as placeholder in dashboard grid
                 const newHotel = ref({ name:'', address:'', checkIn:'', checkOut:'' });
+                const editHotelData = ref({});
+                const editHotelIndex = ref(-1);
+
+                // Voucher
                 const newVoucher = ref({ title:'', note:'', file:null, fileType:null });
                 const isEditingVoucher = ref(false);
                 const editingVoucherIndex = ref(-1);
                 
-                // Generic List (Notes)
-                const currentListType = ref(''); // todo, luggage, places, shopping
+                // Notes
+                const currentListType = ref(''); 
                 const showItemModal = ref(false);
                 const isEditingItem = ref(false);
                 const editingItemIndex = ref(-1);
@@ -603,91 +591,66 @@
                 const newMemberName = ref('');
                 const calcCurrency = ref('JPY'); const calcInput = ref(''); const expenseNote = ref(''); const expensePayer = ref('Me'); const expenseSplitters = ref(['Me']); 
                 const rates = { JPY: 0.22, KRW: 0.024, USD: 32.1, EUR: 34.5, THB: 0.9 };
-                let unsubscribeTrips = null; let unsubscribeCurrentTrip = null;
-
-                onMounted(() => {
-                    const initApp = () => { if(window.fb && window.fb.auth) { firebaseStatus.value = 'ready'; window.fb.onAuthStateChanged(window.fb.auth, (u) => { user.value = u; if(u) loadTrips(); }); document.getElementById('app-loading').classList.add('hidden-load'); } };
-                    window.addEventListener('firebase-ready', initApp); setTimeout(() => { if(window.fb) initApp(); else document.getElementById('app-loading').classList.add('hidden-load'); }, 2000);
-                    const savedTheme = localStorage.getItem('trip_theme');
-                    setTheme(savedTheme || 'classic');
-                    const savedName = localStorage.getItem('trip_user_name');
-                    if(savedName) userName.value = savedName;
-                });
                 
-                const setTheme = (name) => { currentTheme.value = name; localStorage.setItem('trip_theme', name); const c = themeConfig[name]; document.documentElement.style.setProperty('--main-bg', c.bg); document.documentElement.style.setProperty('--accent', c.accent); document.documentElement.style.setProperty('--accent-light', c.light); };
-                const saveUserName = async () => {
-                    localStorage.setItem('trip_user_name', userName.value);
-                    if(currentTrip.value.id && user.value) {
-                        const update = {};
-                        update[`memberNames.${user.value.uid}`] = userName.value;
-                        await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), update);
-                    }
+                // Weather
+                const realWeather = ref({ temp: '--', high: '--', low: '--', rain: '0', icon: 'fa-solid fa-spinner fa-spin' });
+                const fetchRealWeather = async (city) => {
+                    if(!city) return;
+                    let lat = 23.5, lon = 121.0; 
+                    const lowerCity = city.toLowerCase().trim();
+                    if(cityData[lowerCity]) { lat = cityData[lowerCity].lat; lon = cityData[lowerCity].lon; }
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+                    try {
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        realWeather.value = {
+                            temp: Math.round(data.current.temperature_2m),
+                            rain: data.current.precipitation,
+                            high: Math.round(data.daily.temperature_2m_max[0]),
+                            low: Math.round(data.daily.temperature_2m_min[0]),
+                            icon: getWeatherIcon(data.current.weather_code)
+                        };
+                    } catch (e) { console.error(e); realWeather.value.icon = 'fa-solid fa-circle-exclamation'; }
                 };
-                const getDisplayName = (uid) => {
-                    if (uid === user.value?.uid) return userName.value; 
-                    if (currentTrip.value.memberNames && currentTrip.value.memberNames[uid]) return currentTrip.value.memberNames[uid]; 
-                    if (uid === 'Me') return 'Me'; 
-                    return uid; 
-                };
-
-                const login = async () => { try { if (!window.fb) throw new Error("Init Error"); await window.fb.signInAnonymously(window.fb.auth); } catch (e) { errorMessage.value = e.message; } };
-                const logout = () => window.fb.signOut(window.fb.auth);
-                const loadTrips = () => { loading.value = true; if(unsubscribeTrips) unsubscribeTrips(); const q = window.fb.query(window.fb.collection(window.fb.db, "trips"), window.fb.where("members", "array-contains", user.value.uid)); unsubscribeTrips = window.fb.onSnapshot(q, (snap) => { trips.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); loading.value = false; }); };
-                const backToHome = () => { currentView.value = 'home'; if(unsubscribeCurrentTrip) { unsubscribeCurrentTrip(); unsubscribeCurrentTrip = null; } currentTrip.value = {}; loadTrips(); };
-                const openTrip = (trip) => { if(unsubscribeCurrentTrip) unsubscribeCurrentTrip(); unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => { if(doc.exists()) { currentTrip.value = { id: doc.id, ...doc.data() }; if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate); } }); currentView.value = 'dashboard'; };
-                const openNewTripModal = () => { isModalOpen.value = true; };
-                const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
-                
-                const createCloudTrip = async () => { 
-                    if (!form.value.destination || !form.value.startDate) return; 
-                    
-                    const defaultTasks = [
-                        { text: '護照日期檢查', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
-                        { text: '入境憑證辦理', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
-                        { text: '換外幣', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }
-                    ];
-                    const defaultLuggage = [
-                        { text: '護照', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
-                        { text: '充電器', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } },
-                        { text: '盥洗用具', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }
-                    ];
-
-                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { 
-                        ...form.value, 
-                        members: [user.value.uid], 
-                        memberNames: { [user.value.uid]: userName.value },
-                        itinerary: {}, 
-                        todos: defaultLuggage, 
-                        wishlist: [], 
-                        places: [], 
-                        tasks: defaultTasks, 
-                        expenses: [], flights: [], hotels: [], vouchers: [], 
-                        createdAt: Date.now() 
-                    }); 
-                    isModalOpen.value = false; 
-                };
-                
-                const deleteTrip = async (trip) => { if(confirm('Delete?')) await window.fb.deleteDoc(window.fb.doc(window.fb.db, "trips", trip.id)); };
-                const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
-                const updateTripCover = async (trip, e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = async (ev) => { const i = new Image(); i.onload = async () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); const b64 = c.toDataURL('image/jpeg',0.6); await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", trip.id), { coverImage: b64 }); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
-
-                // Windy Integration Logic
-                const windyEmbedUrl = computed(() => {
-                    let lat = 23.5; let lon = 121.0; // Default Taiwan
-                    if(currentTrip.value.destination) {
-                        const city = currentTrip.value.destination.toLowerCase().trim();
-                        if(cityData[city]) { lat = cityData[city].lat; lon = cityData[city].lon; }
-                    }
-                    return `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=5&level=surface&overlay=radar&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1`;
-                });
                 const windyFullUrl = computed(() => {
                     let lat = 23.5; let lon = 121.0; 
                     if(currentTrip.value.destination) {
                         const city = currentTrip.value.destination.toLowerCase().trim();
                         if(cityData[city]) { lat = cityData[city].lat; lon = cityData[city].lon; }
                     }
-                    return `https://www.windy.com/?${lat},${lon},5`;
+                    return `https://www.windy.com/?${lat},${lon},9`;
                 });
+
+                let unsubscribeTrips = null; let unsubscribeCurrentTrip = null;
+
+                onMounted(() => {
+                    const initApp = () => { if(window.fb && window.fb.auth) { firebaseStatus.value = 'ready'; window.fb.onAuthStateChanged(window.fb.auth, (u) => { user.value = u; if(u) loadTrips(); }); document.getElementById('app-loading').classList.add('hidden-load'); } };
+                    window.addEventListener('firebase-ready', initApp); setTimeout(() => { if(window.fb) initApp(); else document.getElementById('app-loading').classList.add('hidden-load'); }, 2000);
+                    const savedTheme = localStorage.getItem('trip_theme'); setTheme(savedTheme || 'classic');
+                    const savedName = localStorage.getItem('trip_user_name'); if(savedName) userName.value = savedName;
+                });
+                
+                const setTheme = (name) => { currentTheme.value = name; localStorage.setItem('trip_theme', name); const c = themeConfig[name]; document.documentElement.style.setProperty('--main-bg', c.bg); document.documentElement.style.setProperty('--accent', c.accent); document.documentElement.style.setProperty('--accent-light', c.light); };
+                const saveUserName = async () => { localStorage.setItem('trip_user_name', userName.value); if(currentTrip.value.id && user.value) { const update = {}; update[`memberNames.${user.value.uid}`] = userName.value; await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), update); } };
+                const getDisplayName = (uid) => { if (uid === user.value?.uid) return userName.value; if (currentTrip.value.memberNames && currentTrip.value.memberNames[uid]) return currentTrip.value.memberNames[uid]; if (uid === 'Me') return 'Me'; return uid; };
+                const login = async () => { try { if (!window.fb) throw new Error("Init Error"); await window.fb.signInAnonymously(window.fb.auth); } catch (e) { errorMessage.value = e.message; } };
+                const logout = () => window.fb.signOut(window.fb.auth);
+                const loadTrips = () => { loading.value = true; if(unsubscribeTrips) unsubscribeTrips(); const q = window.fb.query(window.fb.collection(window.fb.db, "trips"), window.fb.where("members", "array-contains", user.value.uid)); unsubscribeTrips = window.fb.onSnapshot(q, (snap) => { trips.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); loading.value = false; }); };
+                const backToHome = () => { currentView.value = 'home'; if(unsubscribeCurrentTrip) { unsubscribeCurrentTrip(); unsubscribeCurrentTrip = null; } currentTrip.value = {}; loadTrips(); };
+                const openTrip = (trip) => { if(unsubscribeCurrentTrip) unsubscribeCurrentTrip(); unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => { if(doc.exists()) { currentTrip.value = { id: doc.id, ...doc.data() }; if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate); fetchRealWeather(currentTrip.value.destination); } }); currentView.value = 'dashboard'; };
+                const openNewTripModal = () => { isModalOpen.value = true; };
+                const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
+                
+                const createCloudTrip = async () => { 
+                    if (!form.value.destination || !form.value.startDate) return; 
+                    const defaultTasks = [{ text: '護照日期檢查', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }, { text: '入境憑證辦理', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }, { text: '換外幣', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }];
+                    const defaultLuggage = [{ text: '護照', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }, { text: '充電器', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }, { text: '盥洗用具', done: false, owner: user.value.uid, subStatus: { [user.value.uid]: false } }];
+                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { ...form.value, members: [user.value.uid], memberNames: { [user.value.uid]: userName.value }, itinerary: {}, todos: defaultLuggage, wishlist: [], places: [], tasks: defaultTasks, expenses: [], flights: [], hotels: [], vouchers: [], createdAt: Date.now() }); isModalOpen.value = false; 
+                };
+                
+                const deleteTrip = async (trip) => { if(confirm('Delete?')) await window.fb.deleteDoc(window.fb.doc(window.fb.db, "trips", trip.id)); };
+                const syncUpdate = async () => { if(currentTrip.value.id) await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), { ...currentTrip.value }); };
+                const updateTripCover = async (trip, e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = async (ev) => { const i = new Image(); i.onload = async () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); const b64 = c.toDataURL('image/jpeg',0.6); await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", trip.id), { coverImage: b64 }); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
 
                 // Flights
                 const addSimpleFlight = () => { if(!currentTrip.value.flights) currentTrip.value.flights = []; currentTrip.value.flights.push({ ...simpleFlight.value, origin:'', dest:'', originCity:'', destCity:'', arrTime:'', baggage:'', aircraft:'', cost:'' }); simpleFlight.value = { code:'', airline:'', date:'', time:'' }; showAddFlightModal.value = false; syncUpdate(); };
@@ -695,10 +658,26 @@
                 const saveFlightDetail = () => { if(editFlightIndex.value > -1) { if(editFlightData.value.originCity) editFlightData.value.origin = getAirportCode(editFlightData.value.originCity); if(editFlightData.value.destCity) editFlightData.value.dest = getAirportCode(editFlightData.value.destCity); currentTrip.value.flights[editFlightIndex.value] = { ...editFlightData.value }; syncUpdate(); } showEditFlightModal.value = false; };
                 const deleteCurrentFlight = () => { currentTrip.value.flights.splice(editFlightIndex.value, 1); syncUpdate(); showEditFlightModal.value = false; };
 
-                // Hotels & Vouchers
-                const addHotel = () => { if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; currentTrip.value.hotels.push({...newHotel.value}); newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; syncUpdate(); };
-                const removeHotel = (i) => { currentTrip.value.hotels.splice(i,1); syncUpdate(); };
-                const handleVoucherFile = (e) => { const f = e.target.files[0]; if(f) { if (f.size > 2000000) { alert("Max 2MB"); return; } const r = new FileReader(); r.onload = (ev) => { newVoucher.value.file = ev.target.result; newVoucher.value.fileType = f.type === 'application/pdf' ? 'pdf' : 'img'; }; r.readAsDataURL(f); } };
+                // Hotels Logic
+                const addHotel = () => { if(!currentTrip.value.hotels)currentTrip.value.hotels=[]; currentTrip.value.hotels.push({...newHotel.value, photos:[], cost:0, refNumber:''}); newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; showAddHotelModal.value = false; syncUpdate(); };
+                const openHotelDetail = (h, i) => { editHotelData.value = { ...h }; editHotelIndex.value = i; currentView.value = 'hotel_detail'; };
+                const saveHotelDetail = () => { if(editHotelIndex.value > -1) { currentTrip.value.hotels[editHotelIndex.value] = { ...editHotelData.value }; syncUpdate(); } currentView.value = 'hotels'; };
+                const deleteCurrentHotel = () => { currentTrip.value.hotels.splice(editHotelIndex.value, 1); syncUpdate(); currentView.value = 'hotels'; };
+                const handleHotelPhoto = (e) => { 
+                    const f = e.target.files[0]; 
+                    if(f && editHotelData.value.photos.length < 3) { 
+                        const r = new FileReader(); 
+                        r.onload = (ev) => { 
+                            if(!editHotelData.value.photos) editHotelData.value.photos = [];
+                            editHotelData.value.photos.push(ev.target.result); 
+                        }; 
+                        r.readAsDataURL(f); 
+                    } 
+                };
+                const removeHotelPhoto = (idx) => { editHotelData.value.photos.splice(idx, 1); };
+
+                // Vouchers
+                const handleVoucherFile = (e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = (ev) => { newVoucher.value.file = ev.target.result; newVoucher.value.fileType = f.type === 'application/pdf' ? 'pdf' : 'img'; }; r.readAsDataURL(f); } };
                 const saveVoucher = () => { if(!currentTrip.value.vouchers) currentTrip.value.vouchers = []; if(isEditingVoucher.value) { currentTrip.value.vouchers[editingVoucherIndex.value] = { ...newVoucher.value }; isEditingVoucher.value = false; editingVoucherIndex.value = -1; } else { currentTrip.value.vouchers.push({ ...newVoucher.value }); } newVoucher.value = { title:'', note:'', file:null, fileType:null }; syncUpdate(); };
                 const editVoucher = (v, i) => { newVoucher.value = { ...v }; isEditingVoucher.value = true; editingVoucherIndex.value = i; };
                 const cancelEditVoucher = () => { newVoucher.value = { title:'', note:'', file:null, fileType:null }; isEditingVoucher.value = false; editingVoucherIndex.value = -1; };
@@ -707,71 +686,39 @@
 
                 // Generic Lists
                 const openGenericList = (type) => { currentListType.value = type; currentView.value = 'generic_list'; };
-                const getGenericList = () => {
-                    if(!currentTrip.value) return [];
-                    const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' };
-                    const key = map[currentListType.value];
-                    return currentTrip.value[key] || [];
-                };
-                const itemModalConfig = computed(() => {
-                    const map = { 
-                        todo: { titleKey: 'addTask', placeholderKey: 'enterItem' }, 
-                        luggage: { titleKey: 'addLuggage', placeholderKey: 'enterItem' }, 
-                        places: { titleKey: 'addPlace', placeholderKey: 'enterItem' }, 
-                        shopping: { titleKey: 'addShopping', placeholderKey: 'enterItem' }
-                    };
-                    return map[currentListType.value] || { titleKey: 'add', placeholderKey: 'enterItem' };
-                });
-                
-                const toggleSubItem = (item, member) => {
-                    if (!item.subStatus) item.subStatus = {};
-                    item.subStatus[member] = !item.subStatus[member];
-                    const allTrue = Object.values(item.subStatus).every(v => v === true);
-                    item.done = allTrue;
-                    syncUpdate();
-                };
-
+                const getGenericList = () => { const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' }; const key = map[currentListType.value]; return currentTrip.value[key] || []; };
+                const itemModalConfig = computed(() => { const map = { todo: { titleKey: 'addTask', placeholderKey: 'enterItem' }, luggage: { titleKey: 'addLuggage', placeholderKey: 'enterItem' }, places: { titleKey: 'addPlace', placeholderKey: 'enterItem' }, shopping: { titleKey: 'addShopping', placeholderKey: 'enterItem' } }; return map[currentListType.value] || { titleKey: 'add', placeholderKey: 'enterItem' }; });
+                const toggleSubItem = (item, member) => { if (!item.subStatus) item.subStatus = {}; item.subStatus[member] = !item.subStatus[member]; const allTrue = Object.values(item.subStatus).every(v => v === true); item.done = allTrue; syncUpdate(); };
                 const openItemModal = (item = null, index = -1) => {
                     if(item) { 
-                        isEditingItem.value = true; 
-                        editingItemIndex.value = index; 
-                        newItemData.value = { owner: user.value.uid, ...item }; 
-                        
+                        isEditingItem.value = true; editingItemIndex.value = index; newItemData.value = { owner: user.value.uid, ...item }; 
                         if(['todo','luggage'].includes(currentListType.value)) {
                             if(!newItemData.value.subStatus) newItemData.value.subStatus = {};
-                            (currentTrip.value.members || ['Me']).forEach(m => {
-                                if(newItemData.value.subStatus[m] === undefined) newItemData.value.subStatus[m] = false;
-                            });
+                            (currentTrip.value.members || ['Me']).forEach(m => { if(newItemData.value.subStatus[m] === undefined) newItemData.value.subStatus[m] = false; });
                         }
                     } else { 
-                        isEditingItem.value = false; 
-                        editingItemIndex.value = -1; 
+                        isEditingItem.value = false; editingItemIndex.value = -1; 
                         let initSub = {};
-                        if(['todo','luggage'].includes(currentListType.value)) {
-                            (currentTrip.value.members || ['Me']).forEach(m => initSub[m] = false);
-                        }
+                        if(['todo','luggage'].includes(currentListType.value)) { (currentTrip.value.members || ['Me']).forEach(m => initSub[m] = false); }
                         newItemData.value = { text: '', address: '', photo: null, done: false, owner: user.value.uid, subStatus: initSub }; 
                     }
                     showItemModal.value = true;
                 };
                 const handleItemPhoto = (e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = (ev) => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); newItemData.value.photo = c.toDataURL('image/jpeg',0.6); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
-                
                 const saveGenericItem = () => {
                     if(!newItemData.value.text) return;
                     const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' };
                     const key = map[currentListType.value];
                     if(!currentTrip.value[key]) currentTrip.value[key] = [];
-                    
+                    // Force generate subStatus for new item if needed
+                    if(['todo', 'luggage'].includes(currentListType.value) && !isEditingItem.value) {
+                         const sub = {}; (currentTrip.value.members || ['Me']).forEach(m => sub[m] = false); newItemData.value.subStatus = sub;
+                    }
                     if(isEditingItem.value) { currentTrip.value[key][editingItemIndex.value] = { ...newItemData.value }; }
                     else { currentTrip.value[key].push({ ...newItemData.value }); }
-                    
                     syncUpdate(); showItemModal.value = false;
                 };
-                const removeGenericItem = (i) => { 
-                    const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' };
-                    const key = map[currentListType.value];
-                    currentTrip.value[key].splice(i, 1); syncUpdate();
-                };
+                const removeGenericItem = (i) => { const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' }; const key = map[currentListType.value]; currentTrip.value[key].splice(i, 1); syncUpdate(); };
 
                 const formatDate = (s) => s ? s.replace(/-/g, '/') : '';
                 const getDays = (s,e) => { const d1=new Date(s), d2=new Date(e); return isNaN(d1)||isNaN(d2)?0:Math.floor((d2-d1)/86400000)+1; };
@@ -802,12 +749,12 @@
                     simpleFlight, addSimpleFlight, 
                     showAddFlightModal, showEditFlightModal, editFlightData, openFlightDetail, saveFlightDetail, deleteCurrentFlight, getAirportCode,
                     newVoucher, handleVoucherFile, saveVoucher, editVoucher, cancelEditVoucher, removeVoucher, openFile, isEditingVoucher,
-                    newHotel, addHotel, removeHotel,
+                    newHotel, addHotel, removeHotel, showAddHotelModal, editHotelData, openHotelDetail, saveHotelDetail, deleteCurrentHotel, handleHotelPhoto, removeHotelPhoto,
                     totalExpense, groupedTotals, handleCalc, calcInput, calcCurrency, calculateTWD, expenseNote, expensePayer, expenseSplitters, saveExpense, deleteExpense, newMemberName, addMember, removeMember,
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt)}`),
-                    setTheme, currentTheme, userName, saveUserName, getDisplayName, windyEmbedUrl, windyFullUrl
+                    setTheme, currentTheme, userName, saveUserName, getDisplayName, realWeather, windyFullUrl
                 };
             }
         }).mount('#app');
