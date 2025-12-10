@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v40 (New Key)</title>
+    <title>Trip Planner v41 (Key Confirmed)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,10 +36,11 @@
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // ==========================================
-        // Firebase 設定 (已更新 API Key)
+        // Firebase 設定
+        // 注意：如果您的 API Key 來自新專案，請務必更新下方的 projectId 等資訊
         // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyAmUlW9yahH8RCDXr24dtN2l7XXKYNwZrk", 
+            apiKey: "AIzaSyAmUlW9yahH8RCDXr24dtN2l7XXKYNwZrk", // 已確認為您指定的 Key
             authDomain: "travel-8eaef.firebaseapp.com",
             projectId: "travel-8eaef",
             storageBucket: "travel-8eaef.firebasestorage.app",
