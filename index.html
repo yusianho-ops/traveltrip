@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v44 (Config Fixed)</title>
+    <title>Trip Planner v45 (Clean Config)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,17 +36,35 @@
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // ==========================================
-        // Firebase 設定 (已更新為您提供的正確資訊)
+        // ⚠️ 關鍵步驟：請填入您的 Firebase 設定
+        // 請刪除下方的註解範例，並貼上您從 Firebase Console > Project Settings > General > Your apps > Config 複製的內容
         // ==========================================
+        
         const firebaseConfig = {
-            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI", // Updated Key
-            authDomain: "travel-8eaef.firebaseapp.com",
-            projectId: "travel-8eaef",
-            storageBucket: "travel-8eaef.firebasestorage.app",
-            messagingSenderId: "151062172132",
-            appId: "1:151062172132:web:9bcda7d1de3eec31b037f1",
-            measurementId: "G-CCGZFCJYQ8"
+            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
+  authDomain: "travel-8eaef.firebaseapp.com",
+  projectId: "travel-8eaef",
+  storageBucket: "travel-8eaef.firebasestorage.app",
+  messagingSenderId: "151062172132",
+  appId: "1:151062172132:web:9bcda7d1de3eec31b037f1",
+  measurementId: "G-CCGZFCJYQ8"
         };
+
+        // 檢查是否已填入設定 (防止未設定直接執行)
+        if (firebaseConfig.apiKey.includes("請在此貼上")) {
+            document.body.innerHTML = `
+                <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;text-align:center;padding:20px;font-family:sans-serif;color:#333;background:#f5f5f7;">
+                    <i class="fa-solid fa-gear fa-spin" style="font-size:50px;color:#6366f1;margin-bottom:20px;"></i>
+                    <h1 style="font-size:24px;margin-bottom:10px;">Setup Required / 需要設定</h1>
+                    <p style="max-width:300px;line-height:1.6;font-size:14px;color:#666;">
+                        請使用文字編輯器打開 <strong>index.html</strong><br>
+                        找到第 48 行的 <strong>firebaseConfig</strong><br>
+                        貼上您從 Firebase 後台取得的完整設定。
+                    </p>
+                </div>
+            `;
+            throw new Error("Configuration Missing");
+        }
 
         try {
             const app = initializeApp(firebaseConfig);
@@ -125,7 +143,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.12</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.13</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
