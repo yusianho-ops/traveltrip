@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v43 (Windy Only)</title>
+    <title>Trip Planner v44 (Config Fixed)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,13 +36,10 @@
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // ==========================================
-        // ⚠️ Firebase 設定檢查
-        // 如果出現 auth/configuration-not-found 錯誤，
-        // 請務必確認 projectId 與 apiKey 是否屬於同一個 Firebase 專案。
-        // 建議直接從 Firebase Console > Project Settings 複製「整段」內容覆蓋下方。
+        // Firebase 設定 (已更新為您提供的正確資訊)
         // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyAmUlW9yahH8RCDXr24dtN2l7XXKYNwZrk", 
+            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI", // Updated Key
             authDomain: "travel-8eaef.firebaseapp.com",
             projectId: "travel-8eaef",
             storageBucket: "travel-8eaef.firebasestorage.app",
@@ -197,7 +194,6 @@
                         <div class="windy-container relative shadow-sm">
                             <iframe class="windy-iframe" :src="windyEmbedUrl"></iframe>
                         </div>
-                        <!-- Removed Buttons as requested -->
                     </div>
 
                     <!-- Date Scroll (Timeline) -->
