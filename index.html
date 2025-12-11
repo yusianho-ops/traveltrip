@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v4.2 (Features Added)</title>
+    <title>Trip Planner v4.3 (Itinerary Pro)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -82,12 +82,14 @@
         body { background-color: var(--main-bg); color: var(--text-main); font-family: 'Inter', 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; transition: background-color 0.5s ease; }
         .scrollbar-hide::-webkit-scrollbar { display: none; } 
         
+        /* Requirement 1: Padding for inputs approx 1 char width */
         input, select, textarea { 
-            background: var(--input-bg); color: var(--text-main); border: 1px solid #D1D5DB; padding: 0.8rem;
+            background: var(--input-bg); color: var(--text-main); border: 1px solid #D1D5DB; 
+            padding: 0.8rem 0.8rem 0.8rem 1.2rem; /* Left padding increased */
             border-radius: 0.75rem; font-weight: 600; outline: none; transition: all 0.2s; width: 100%; font-size: 15px !important; 
         }
-        .input-center { text-align: center; } .input-center::placeholder { text-align: center; }
-        .input-left { text-align: left; padding-left: 1.2rem; }
+        .input-center { text-align: center; padding-left: 0.8rem; } /* Reset for centered inputs */
+        .input-center::placeholder { text-align: center; }
 
         input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
         
@@ -118,7 +120,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 4.2</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 4.3</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -184,7 +186,6 @@
                     <div class="grid grid-cols-2 gap-3 mb-6">
                         <div @click="changeToItinerary" class="col-span-2 bg-text-main rounded-2xl h-32 flex flex-col justify-center items-center cursor-pointer active:scale-[0.98] relative overflow-hidden shadow-lg"><i class="fa-solid fa-map-location-dot text-7xl text-white opacity-10 absolute -right-2 -bottom-4"></i><h3 class="text-2xl font-black text-white z-10 tracking-widest">{{ t('itinerary') }}</h3></div>
                         <div @click="openTool('budget')" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-wallet text-2xl mb-1 text-accent"></i><span class="font-bold text-xs text-text-main">{{ t('budget') }}</span></div>
-                        <!-- REPLACED LUGGAGE WITH TRANSLATION -->
                         <div @click="showTranslationModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-language text-2xl mb-1 text-blue-500"></i><span class="font-bold text-xs text-text-main">{{ t('translation') }}</span></div>
                         <div @click="currentView = 'flights'" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer border border-transparent hover:border-accent transition-colors"><i class="fa-solid fa-plane-up text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('flights') }}</span></div>
                         <div @click="showHotelModal=true" class="bg-white rounded-2xl h-24 flex flex-col justify-center items-center active:scale-95 shadow-soft cursor-pointer"><i class="fa-solid fa-bed text-2xl mb-1 text-text-main"></i><span class="font-bold text-xs text-text-main">{{ t('hotels') }}</span></div>
@@ -194,7 +195,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: ITINERARY -->
+            <!-- VIEW: ITINERARY (Enhanced) -->
             <div v-if="currentView === 'itinerary'" class="flex flex-col h-screen bg-main-bg">
                 <div class="bg-white sticky top-0 z-30 shadow-sm">
                     <div class="p-4 flex justify-between items-center">
@@ -202,6 +203,7 @@
                         <h2 class="font-black text-xl text-text-main">{{ t('itinerary') }}</h2>
                         <div class="w-10"></div>
                     </div>
+                    <!-- Req 7: Date Scroller -->
                     <div class="flex overflow-x-auto gap-3 p-4 pt-0 scrollbar-hide">
                         <button v-for="d in tripDates" :key="d" @click="selectedDate = d" 
                             class="flex-shrink-0 px-5 py-3 rounded-2xl font-black border-2 transition-all whitespace-nowrap shadow-sm active:scale-95"
@@ -213,32 +215,53 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+                    <!-- Add Item Box -->
                     <div class="bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
-                        <div class="flex gap-2 mb-3">
-                            <input type="time" v-model="newItem.time" class="w-24 bg-gray-50 border-none text-center font-bold text-gray-600 rounded-xl">
+                        <!-- Req 5: Time and Category split 50/50 -->
+                        <div class="flex gap-2 mb-2">
+                            <input type="time" v-model="newItem.time" class="flex-1 bg-gray-50 border-none text-center font-bold text-gray-600 rounded-xl">
                             <select v-model="newItem.category" class="flex-1 bg-gray-50 border-none font-bold text-gray-600 rounded-xl px-2">
                                 <option value="sightseeing">📸 {{ t('sightseeing') }}</option>
                                 <option value="food">🍴 {{ t('food') }}</option>
                                 <option value="shopping">🛍️ {{ t('shopping') }}</option>
                             </select>
                         </div>
-                        <div class="flex gap-2">
-                            <input v-model="newItem.text" :placeholder="t('enterItem')" class="flex-1 bg-gray-50 border-none rounded-xl">
-                            <button @click="saveItem" class="w-14 bg-accent text-white rounded-xl shadow-lg active:scale-90 text-xl font-bold flex items-center justify-center"><i class="fa-solid fa-plus"></i></button>
-                        </div>
+                        <!-- Req 6: Name and Address -->
+                        <input v-model="newItem.text" :placeholder="t('enterItem')" class="mb-2 bg-gray-50 border-none rounded-xl">
+                        <input v-model="newItem.address" :placeholder="t('address')" class="mb-2 bg-gray-50 border-none rounded-xl text-sm">
+                        
+                        <button @click="saveItem" class="w-full py-3 bg-accent text-white rounded-xl shadow-lg active:scale-95 text-xl font-bold flex items-center justify-center"><i class="fa-solid fa-plus"></i></button>
                     </div>
 
-                    <div id="sortable-list" class="space-y-3 min-h-[50px]">
-                         <div v-for="(item, index) in getDayItems()" :key="item.id" class="bg-white p-4 rounded-2xl shadow-soft flex items-center gap-4 group relative active:scale-[0.99] transition-transform border-l-4 border-accent">
-                            <div class="flex flex-col items-center justify-center w-12 border-r border-gray-100 pr-2">
-                                <span class="text-xs font-black text-gray-400">{{ item.time }}</span>
+                    <div id="sortable-list" class="space-y-0 min-h-[50px]">
+                         <div v-for="(item, index) in getDayItems()" :key="item.id" class="group relative">
+                            
+                            <!-- Req 8: Transport Between Items (Shown ABOVE the item, if not first) -->
+                            <div v-if="index > 0" class="flex justify-center items-center py-2 relative z-0">
+                                <div class="h-8 w-0.5 bg-gray-300 absolute top-0 bottom-0 left-1/2 -translate-x-1/2 -z-10"></div>
+                                <div class="bg-white border border-gray-200 rounded-full px-3 py-1 flex items-center gap-2 shadow-sm">
+                                    <select v-model="item.travelMode" @change="syncUpdate" class="text-xs font-bold bg-transparent border-none p-0 w-auto !py-0 !pl-0">
+                                        <option value="car">🚗 Car</option>
+                                        <option value="transit">🚆 Transit</option>
+                                        <option value="walk">🚶 Walk</option>
+                                    </select>
+                                    <input v-model="item.travelTime" @change="syncUpdate" placeholder="15m" class="text-xs font-bold w-10 text-center bg-transparent border-b border-gray-300 p-0 !pl-0 rounded-none focus:border-accent">
+                                </div>
                             </div>
-                            <div class="text-2xl">{{ item.categoryEmoji }}</div>
-                            <div class="flex-1 overflow-hidden">
-                                <div class="font-bold text-text-main text-lg leading-tight truncate">{{ item.text }}</div>
-                                <div class="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{{ t(item.category) }}</div>
+
+                            <!-- Item Card -->
+                            <div class="bg-white p-4 rounded-2xl shadow-soft flex items-center gap-4 active:scale-[0.99] transition-transform border-l-4 border-accent z-10 relative">
+                                <div class="flex flex-col items-center justify-center w-12 border-r border-gray-100 pr-2">
+                                    <span class="text-xs font-black text-gray-400">{{ item.time }}</span>
+                                </div>
+                                <div class="text-2xl">{{ item.categoryEmoji }}</div>
+                                <div class="flex-1 overflow-hidden">
+                                    <div class="font-bold text-text-main text-lg leading-tight truncate">{{ item.text }}</div>
+                                    <!-- Req 6: Navigation Link -->
+                                    <div v-if="item.address" @click.stop="openMap(item.address)" class="text-[10px] font-bold text-blue-400 mt-1 truncate cursor-pointer underline"><i class="fa-solid fa-location-dot"></i> {{ item.address }}</div>
+                                </div>
+                                <button @click="deleteItem(index)" class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash text-sm"></i></button>
                             </div>
-                            <button @click="deleteItem(index)" class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash text-sm"></i></button>
                          </div>
                     </div>
                     
@@ -257,25 +280,20 @@
                     <button @click="saveHotelDetail" class="text-accent font-bold">{{ t('done') }}</button>
                 </div>
                 <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-                    <!-- Carousel -->
                     <div class="relative w-full h-56 bg-gray-200 rounded-2xl overflow-hidden shadow-soft">
                         <div v-if="!currentHotel.photos || currentHotel.photos.length === 0" class="w-full h-full flex flex-col items-center justify-center text-gray-400">
                              <i class="fa-solid fa-image text-4xl mb-2"></i>
                              <span class="text-xs font-bold">{{ t('noPhotos') }}</span>
                         </div>
                         <img v-else :src="currentHotel.photos[currentHotelPhotoIndex]" class="w-full h-full object-cover">
-                        
-                        <!-- Carousel Controls -->
                         <div v-if="currentHotel.photos && currentHotel.photos.length > 1" class="absolute inset-0 flex items-center justify-between p-2">
                              <button @click="prevPhoto" class="w-8 h-8 bg-black/30 text-white rounded-full backdrop-blur-sm"><i class="fa-solid fa-chevron-left"></i></button>
                              <button @click="nextPhoto" class="w-8 h-8 bg-black/30 text-white rounded-full backdrop-blur-sm"><i class="fa-solid fa-chevron-right"></i></button>
                         </div>
-                        <!-- Add Photo Button -->
                         <label class="absolute bottom-2 right-2 bg-white/90 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm cursor-pointer active:scale-95 flex items-center gap-1">
                             <input type="file" accept="image/*" class="hidden" @change="addHotelPhoto">
                             <i class="fa-solid fa-camera"></i> +{{ t('add') }}
                         </label>
-                         <!-- Delete Photo Button -->
                          <button v-if="currentHotel.photos && currentHotel.photos.length > 0" @click="deleteHotelPhoto" class="absolute top-2 right-2 bg-red-500/80 text-white w-8 h-8 rounded-full flex items-center justify-center text-xs"><i class="fa-solid fa-trash"></i></button>
                     </div>
 
@@ -330,7 +348,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: GENERIC LIST (Linked Members) -->
+            <!-- VIEW: GENERIC LIST (Collaboration) -->
             <div v-if="currentView === 'generic_list'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
                     <button @click="currentView = 'notes_menu'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
@@ -341,7 +359,7 @@
                     
                     <div v-for="(item, i) in getGenericList()" :key="i" class="bg-white rounded-2xl p-4 shadow-soft">
                         <div class="flex items-start gap-3">
-                            <!-- Checkbox for personal items, or status display for collaborative -->
+                            <!-- Main status (crossed out if everyone done) -->
                             <div v-if="['todo','luggage'].includes(currentListType)" class="w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors mt-1" :class="item.done ? 'bg-green-400 border-green-400' : 'border-gray-200'">
                                 <i v-if="item.done" class="fa-solid fa-check text-white text-xs"></i>
                             </div>
@@ -361,9 +379,8 @@
                             <button @click="removeGenericItem(i)" class="w-8 h-8 rounded-full bg-gray-50 text-red-300 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
 
-                        <!-- Collaborative Checkboxes for ALL members -->
+                        <!-- Req 4: Collaborative Checkboxes for ALL current members -->
                         <div v-if="['todo','luggage'].includes(currentListType)" class="mt-3 pt-3 border-t border-dashed border-gray-100 flex flex-wrap gap-2">
-                            <!-- Loop through current TRIP MEMBERS, not just item status keys -->
                             <div v-for="m in (currentTrip.members || ['Me'])" :key="m" 
                                  @click="toggleSubItem(item, m)"
                                  class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg cursor-pointer active:scale-95 transition-transform"
@@ -380,7 +397,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: FLIGHTS (Full Page) -->
+            <!-- VIEW: FLIGHTS -->
             <div v-if="currentView === 'flights'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
                     <button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
@@ -405,7 +422,7 @@
                                     <div class="text-xl font-bold text-text-main mt-1">{{ f.time || '--:--' }}</div>
                                     <div class="mt-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full inline-block">{{ f.originCity || t('originCity') }}</div>
                                 </div>
-                                <div class="flex-1 flex flex-col items-center justify-center px-4 relative -top-3 space-y-2"> <!-- Added space-y-2 for spacing -->
+                                <div class="flex-1 flex flex-col items-center justify-center px-4 relative -top-3 space-y-2">
                                     <div class="text-[10px] text-gray-400 font-bold">{{ t('direct') }}</div>
                                     <div class="w-full h-0.5 bg-gray-200 relative"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
                                     <div class="text-[10px] text-gray-400 font-bold">{{ formatDate(f.date) }}</div>
@@ -660,7 +677,7 @@
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
         const i18n = {
-            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入項目...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅', translation:'翻譯', chooseApp:'選擇翻譯工具', hotelDetail:'住宿詳情', noPhotos:'尚無照片', cost:'費用', orderId:'訂單編號', deleteHotel:'刪除住宿' },
+            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入名稱...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅', translation:'翻譯', chooseApp:'選擇翻譯工具', hotelDetail:'住宿詳情', noPhotos:'尚無照片', cost:'費用', orderId:'訂單編號', deleteHotel:'刪除住宿' },
             'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', notes:'NOTES', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split', todo:'To-Do', luggage:'Luggage', places:'Places', emptyList:'Empty List', addTask:'Add Task', addLuggage:'Add Item', addPlace:'Add Place', addShopping:'Add Item', addPhoto:'Add Photo', address:'Address', editItem:'Edit Item', theme:'THEME', language:'LANGUAGE', userName:'USER NAME', classic:'Classic', postcard:'Postcard', dune:'Dune', seafoam:'Seafoam', saffron:'Saffron', translation:'Translate', chooseApp:'Choose App', hotelDetail:'Hotel Detail', noPhotos:'No Photos', cost:'Cost', orderId:'Order ID', deleteHotel:'Delete Hotel' }
         };
         const langNames = { 'zh-TW':'繁體中文', 'en':'English' };
@@ -684,7 +701,7 @@
                 const userName = ref('Me'); 
 
                 const form = ref({ destination: '', startDate: '', endDate: '' });
-                const newItem = ref({ time: '10:00', text: '', category: 'sightseeing' });
+                const newItem = ref({ time: '10:00', text: '', category: 'sightseeing', address: '' });
                 
                 // Flight States
                 const showAddFlightModal = ref(false);
@@ -749,32 +766,29 @@
                 const openNewTripModal = () => { isModalOpen.value = true; };
                 const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
                 
-                // CREATE TRIP WITH DEFAULTS
+                // Requirement 2 & 3: Default Items on Create
                 const createCloudTrip = async () => { 
                     if (!form.value.destination || !form.value.startDate) return; 
                     
-                    // Default items logic
                     const creatorId = user.value.uid;
-                    const defaultTasks = [
-                        { text: '護照日期檢查', done: false, subStatus: { [creatorId]: false }, owner: creatorId },
-                        { text: '入境憑證辦理', done: false, subStatus: { [creatorId]: false }, owner: creatorId },
-                        { text: '換外幣', done: false, subStatus: { [creatorId]: false }, owner: creatorId }
-                    ];
-                    const defaultLuggage = [
-                        { text: '護照', done: false, subStatus: { [creatorId]: false }, owner: creatorId },
-                        { text: '充電器', done: false, subStatus: { [creatorId]: false }, owner: creatorId },
-                        { text: '盥洗用具', done: false, subStatus: { [creatorId]: false }, owner: creatorId }
-                    ];
+                    // Default tasks
+                    const defaultTasks = ['護照日期檢查', '入境憑證辦理', '換外幣'].map(txt => ({ 
+                        text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId 
+                    }));
+                    // Default luggage
+                    const defaultLuggage = ['護照', '充電器', '盥洗用具'].map(txt => ({ 
+                        text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId 
+                    }));
 
                     await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { 
                         ...form.value, 
                         members: [creatorId], 
                         memberNames: {}, 
                         itinerary: {}, 
-                        todos: defaultLuggage, // Luggage defaults
+                        todos: defaultLuggage, 
                         wishlist: [], 
                         places: [], 
-                        tasks: defaultTasks, // Todo defaults
+                        tasks: defaultTasks, 
                         expenses: [], 
                         flights: [], 
                         hotels: [], 
@@ -797,13 +811,11 @@
                 // Hotels Logic
                 const addHotel = () => { 
                     if(!currentTrip.value.hotels) currentTrip.value.hotels=[]; 
-                    // Add default structure with photos array
                     const addedHotel = {...newHotel.value, photos:[], cost:'', orderId:''};
                     currentTrip.value.hotels.push(addedHotel); 
                     newHotel.value={name:'',address:'',checkIn:'',checkOut:''}; 
                     showHotelModal.value = false;
                     syncUpdate(); 
-                    // Open detail view immediately
                     openHotelDetail(addedHotel, currentTrip.value.hotels.length - 1);
                 };
                 const removeHotel = (i) => { currentTrip.value.hotels.splice(i,1); syncUpdate(); };
@@ -872,12 +884,13 @@
                     return map[currentListType.value] || { titleKey: 'add', placeholderKey: 'enterItem' };
                 });
                 
+                // Requirement 4: Collaborative Sync Check
                 const toggleSubItem = (item, member) => {
                     if (!item.subStatus) item.subStatus = {};
                     item.subStatus[member] = !item.subStatus[member];
                     
-                    // Check if ALL current members have checked
                     const allMembers = currentTrip.value.members || ['Me'];
+                    // Logic: Item is done only if ALL current members have checked it
                     const allTrue = allMembers.every(m => item.subStatus[m] === true);
                     item.done = allTrue;
                     syncUpdate();
@@ -891,7 +904,6 @@
                         
                         if(['todo','luggage'].includes(currentListType.value)) {
                             if(!newItemData.value.subStatus) newItemData.value.subStatus = {};
-                            // Ensure structure exists
                         }
                     } else { 
                         isEditingItem.value = false; 
@@ -928,7 +940,7 @@
                 const copyId = () => navigator.clipboard.writeText(currentTrip.value.id);
                 const tripDates = computed(() => { if(!currentTrip.value.startDate || !currentTrip.value.endDate) return []; const d = []; let c = new Date(currentTrip.value.startDate); const e = new Date(currentTrip.value.endDate); while(c <= e) { d.push(formatDate(c.toISOString().split('T')[0])); c.setDate(c.getDate()+1); } return d; });
                 const getDayItems = () => (currentTrip.value.itinerary && currentTrip.value.itinerary[selectedDate.value]) || [];
-                const saveItem = () => { if(!newItem.value.text)return; if(!currentTrip.value.itinerary[selectedDate.value]) currentTrip.value.itinerary[selectedDate.value]=[]; currentTrip.value.itinerary[selectedDate.value].push({id:Date.now(), ...newItem.value, categoryEmoji: newItem.value.category==='food'?'🍴':(newItem.value.category==='shopping'?'🛍️':'📸'), travelMode:'🚗', isEditingNote:false}); currentTrip.value.itinerary[selectedDate.value].sort((a,b)=>a.time.localeCompare(b.time)); syncUpdate(); newItem.value.text=''; };
+                const saveItem = () => { if(!newItem.value.text)return; if(!currentTrip.value.itinerary[selectedDate.value]) currentTrip.value.itinerary[selectedDate.value]=[]; currentTrip.value.itinerary[selectedDate.value].push({id:Date.now(), ...newItem.value, categoryEmoji: newItem.value.category==='food'?'🍴':(newItem.value.category==='shopping'?'🛍️':'📸'), travelMode:'🚗', isEditingNote:false}); currentTrip.value.itinerary[selectedDate.value].sort((a,b)=>a.time.localeCompare(b.time)); syncUpdate(); newItem.value.text=''; newItem.value.address=''; };
                 const deleteItem = (i) => { currentTrip.value.itinerary[selectedDate.value].splice(i,1); syncUpdate(); };
                 const changeToItinerary = async () => { currentView.value='itinerary'; await nextTick(); new Sortable(document.getElementById('sortable-list'), { animation:150, ghostClass:'sortable-ghost', handle:'.group', onEnd:(e)=>{ const l = currentTrip.value.itinerary[selectedDate.value]; l.splice(e.newIndex, 0, l.splice(e.oldIndex, 1)[0]); syncUpdate(); }}); };
                 const totalExpense = computed(() => (currentTrip.value.expenses||[]).reduce((a,b)=>a+b.twd,0));
@@ -957,7 +969,7 @@
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt)}`),
-                    setTheme, currentTheme, userName, saveUserName, getDisplayName, showTranslationModal
+                    setTheme, currentTheme, userName, saveUserName, getDisplayName, showTranslationModal, syncUpdate
                 };
             }
         }).mount('#app');
