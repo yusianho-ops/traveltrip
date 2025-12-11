@@ -3,22 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v54 (Vouchers & UI Update)</title>
+    <title>Trip Planner v55 (Syntax Fixed)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#F5F5F7">
-
-    <!-- Error Handler -->
-    <script>
-        window.onerror = function(msg, url, line, col, error) {
-            const log = document.getElementById('error-log');
-            if(log) log.innerHTML += `<div style="color:red; margin-bottom:5px;">⚠️ ${msg}</div>`;
-            const btn = document.getElementById('force-btn');
-            if(btn) btn.style.display = 'block';
-            return false;
-        };
-    </script>
 
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -28,6 +17,53 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <!-- Error Handler -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            const loading = document.getElementById('app-loading');
+            const errorLog = document.getElementById('error-log');
+            const forceBtn = document.getElementById('force-btn');
+            
+            if(loading && !loading.classList.contains('hidden-load')) {
+                if(errorLog) errorLog.innerHTML += `<div style="color:red; margin-bottom:5px;">⚠️ ${msg}</div>`;
+                if(forceBtn) forceBtn.style.display = 'block';
+            }
+            return false;
+        };
+    </script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
+          authDomain: "travel-8eaef.firebaseapp.com",
+          projectId: "travel-8eaef",
+          storageBucket: "travel-8eaef.firebasestorage.app",
+          messagingSenderId: "151062172132",
+          appId: "1:151062172132:web:9bcda7d1de3eec31b037f1",
+          measurementId: "G-CCGZFCJYQ8"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            window.fb = { auth, db, signInAnonymously, signOut, onAuthStateChanged, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc };
+            window.isFirebaseReady = true; 
+            window.dispatchEvent(new Event('firebase-ready'));
+            console.log("Firebase Initialized");
+        } catch (e) { 
+            console.error(e); 
+            const log = document.getElementById('error-log');
+            if(log) log.innerText = "Firebase Init Failed: " + e.message;
+            document.getElementById('force-btn').style.display = 'block';
+        }
+    </script>
 
     <script>
         tailwind.config = {
@@ -49,7 +85,11 @@
     </script>
 
     <style>
-        :root { --main-bg: #F5F5F7; --accent: #6366f1; --accent-light: #E0E7FF; }
+        :root {
+            --main-bg: #F5F5F7;
+            --accent: #6366f1;
+            --accent-light: #E0E7FF;
+        }
         body { background-color: var(--main-bg); color: var(--text-main); font-family: 'Inter', 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; transition: background-color 0.5s ease; }
         .scrollbar-hide::-webkit-scrollbar { display: none; } 
         
@@ -61,6 +101,7 @@
         .input-left { text-align: left; padding-left: 1.2rem; }
 
         input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+        
         input[type="date"] { -webkit-appearance: none; position: relative; min-height: 48px; line-height: 1.2; }
         input[type="date"]:invalid::-webkit-datetime-edit { color: transparent; }
         input[type="date"]:invalid::before { content: "YYYY/MM/DD"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #9CA3AF; pointer-events: none; }
@@ -96,7 +137,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.18 (Vouchers)</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.19 (Fixed)</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -148,7 +189,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: DASHBOARD (Clean - No Weather, No Timeline) -->
+            <!-- VIEW: DASHBOARD (Clean) -->
             <div v-if="currentView === 'dashboard'" class="flex flex-col h-screen bg-main-bg overflow-hidden">
                 <div class="p-4 flex justify-between items-center bg-white shadow-sm sticky top-0 z-20">
                     <button @click="backToHome" class="w-10 h-10 flex items-center justify-center text-text-main active:scale-90"><i class="fa-solid fa-arrow-left text-xl"></i></button>
@@ -160,8 +201,15 @@
                 </div>
                 
                 <div class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
-                    <!-- Spacing for removed weather/timeline -->
-                    <div class="h-6"></div>
+                    <!-- Date Scroll (Timeline) -->
+                    <div class="px-4 mb-4 mt-6">
+                        <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+                            <div v-for="(d, idx) in tripDates" :key="idx" class="flex-shrink-0 w-16 h-16 bg-white rounded-xl flex flex-col items-center justify-center shadow-sm border border-gray-100">
+                                <span class="text-[10px] text-gray-400 font-bold uppercase">{{ d.split('/')[2] }}</span>
+                                <span class="text-xs font-black">DAY {{ idx+1 }}</span>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="p-4 pt-0">
                         <div class="grid grid-cols-2 gap-3 mb-6">
@@ -366,36 +414,6 @@
         </div>
     </div>
 
-    <!-- Firebase -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCp3-jUSRISCLXLgky_N25H1xjYuUC3jaI",
-            authDomain: "travel-8eaef.firebaseapp.com",
-            projectId: "travel-8eaef",
-            storageBucket: "travel-8eaef.firebasestorage.app",
-            messagingSenderId: "151062172132",
-            appId: "1:151062172132:web:9bcda7d1de3eec31b037f1",
-            measurementId: "G-CCGZFCJYQ8"
-        };
-
-        try {
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
-            window.fb = { auth, db, signInAnonymously, signOut, onAuthStateChanged, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc };
-            window.isFirebaseReady = true; 
-            window.dispatchEvent(new Event('firebase-ready'));
-        } catch (e) {
-            console.error(e);
-            document.getElementById('error-log').innerText = "FB Init Error: " + e.message;
-            document.getElementById('force-btn').style.display = 'block';
-        }
-    </script>
-
     <script>
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
@@ -465,18 +483,26 @@
                 };
 
                 onMounted(() => {
+                    // Strategy 1: Check immediately
                     if(window.isFirebaseReady) {
                         initApp();
                     } else {
+                        // Strategy 2: Event Listener
                         window.addEventListener('firebase-ready', initApp);
+                        
+                        // Strategy 3: Aggressive Polling (100ms for 5s)
+                        let attempts = 0;
                         const poller = setInterval(() => {
                             if(window.fb) {
                                 initApp();
                                 clearInterval(poller);
                             }
+                            attempts++;
+                            if(attempts > 50) clearInterval(poller); // Stop after 5s
                         }, 100);
                     }
 
+                    // Timeout Rescue (4s)
                     setTimeout(() => {
                         const load = document.getElementById('app-loading');
                         if(load && !load.classList.contains('hidden-load')) {
@@ -493,6 +519,7 @@
                 const saveUserName = async () => { localStorage.setItem('trip_user_name', userName.value); if(currentTrip.value.id && user.value) { const update = {}; update[`memberNames.${user.value.uid}`] = userName.value; await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), update); } };
                 const getDisplayName = (uid) => { if (uid === user.value?.uid) return userName.value; if (currentTrip.value.memberNames && currentTrip.value.memberNames[uid]) return currentTrip.value.memberNames[uid]; if (uid === 'Me') return 'Me'; return uid; };
                 
+                // FORCE ERROR ALERT
                 const login = async () => { 
                     try { 
                         if (!window.fb) throw new Error("Firebase not ready. Please wait or refresh."); 
@@ -527,22 +554,7 @@
                         { text: '盥洗用具', done: false, owner: creatorId, subStatus: {...subStatusDefault} }
                     ];
 
-                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { 
-                        ...form.value, 
-                        members: [creatorId], 
-                        memberNames: { [creatorId]: userName.value }, 
-                        itinerary: {}, 
-                        todos: defaultLuggage, 
-                        wishlist: [], 
-                        places: [], 
-                        tasks: defaultTasks, 
-                        expenses: [], 
-                        flights: [], 
-                        hotels: [], 
-                        vouchers: [], 
-                        createdAt: Date.now() 
-                    }); 
-                    isModalOpen.value = false; 
+                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { ...form.value, members: [user.value.uid], memberNames: { [user.value.uid]: userName.value }, itinerary: {}, todos: defaultLuggage, wishlist: [], places: [], tasks: defaultTasks, expenses: [], flights: [], hotels: [], vouchers: [], createdAt: Date.now() }); isModalOpen.value = false; 
                 };
                 
                 const deleteTrip = async (trip) => { if(confirm('Delete?')) await window.fb.deleteDoc(window.fb.doc(window.fb.db, "trips", trip.id)); };
@@ -566,6 +578,8 @@
                 // Vouchers
                 const handleVoucherFile = (e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = (ev) => { newVoucher.value.file = ev.target.result; newVoucher.value.fileType = f.type === 'application/pdf' ? 'pdf' : 'img'; }; r.readAsDataURL(f); } };
                 const saveVoucher = () => { if(!currentTrip.value.vouchers) currentTrip.value.vouchers = []; if(isEditingVoucher.value) { currentTrip.value.vouchers[editingVoucherIndex.value] = { ...newVoucher.value }; isEditingVoucher.value = false; editingVoucherIndex.value = -1; } else { currentTrip.value.vouchers.push({ ...newVoucher.value }); } newVoucher.value = { title:'', note:'', file:null, fileType:null }; syncUpdate(); showItemModal.value = false; };
+                const editVoucher = (v, i) => { newVoucher.value = { ...v }; isEditingVoucher.value = true; editingVoucherIndex.value = i; };
+                const cancelEditVoucher = () => { newVoucher.value = { title:'', note:'', file:null, fileType:null }; isEditingVoucher.value = false; editingVoucherIndex.value = -1; };
                 const removeVoucher = (i) => { currentTrip.value.vouchers.splice(i, 1); syncUpdate(); };
                 const openFile = (d) => { const w = window.open(); w.document.write('<iframe src="'+d+'" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>'); };
 
@@ -629,7 +643,7 @@
                     tripDates, getDayItems, saveItem, deleteItem, changeToItinerary,
                     simpleFlight, addSimpleFlight, 
                     showAddFlightModal, showEditFlightModal, editFlightData, openFlightDetail, saveFlightDetail, deleteCurrentFlight, getAirportCode,
-                    newVoucher, handleVoucherFile, saveVoucher, editVoucher, cancelEditVoucher, removeVoucher, openFile, isEditingVoucher, isEditingVoucher, editingVoucherIndex,
+                    newVoucher, handleVoucherFile, saveVoucher, editVoucher, cancelEditVoucher, removeVoucher, openFile, isEditingVoucher, editingVoucherIndex,
                     newHotel, addHotel, removeHotel: deleteCurrentHotel, showAddHotelModal, editHotelData, openHotelDetail, saveHotelDetail, deleteCurrentHotel, handleHotelPhoto, removeHotelPhoto,
                     totalExpense, groupedTotals, handleCalc, calcInput, calcCurrency, calculateTWD, expenseNote, expensePayer, expenseSplitters, saveExpense, deleteExpense, newMemberName, addMember, removeMember,
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
