@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v51 (Final Stable)</title>
+    <title>Trip Planner v52 (No Weather)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#F5F5F7">
 
-    <!-- Error Handler (Must be first) -->
+    <!-- Error Handler -->
     <script>
         window.onerror = function(msg, url, line, col, error) {
             const log = document.getElementById('error-log');
             if(log) log.innerHTML += `<div style="color:red; margin-bottom:5px;">⚠️ ${msg}</div>`;
-            // Auto show rescue button on error
             const btn = document.getElementById('force-btn');
             if(btn) btn.style.display = 'block';
             return false;
@@ -62,8 +61,11 @@
         .input-left { text-align: left; padding-left: 1.2rem; }
         input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
         input[type="date"] { -webkit-appearance: none; position: relative; min-height: 48px; line-height: 1.2; }
+        input[type="date"]:invalid::-webkit-datetime-edit { color: transparent; }
+        input[type="date"]:invalid::before { content: "YYYY/MM/DD"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #9CA3AF; pointer-events: none; }
+        input[type="date"]:focus::-webkit-datetime-edit, input[type="date"]:valid::-webkit-datetime-edit { color: var(--text-main) !important; }
+        input[type="date"]:focus::before, input[type="date"]:valid::before { display: none; }
         
-        /* Loading Screen */
         #app-loading { position: fixed; inset: 0; background: var(--main-bg); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; font-weight: 900; color: #374151; transition: opacity 0.5s; pointer-events: auto; }
         .hidden-load { opacity: 0; pointer-events: none !important; }
         
@@ -81,7 +83,6 @@
         <div class="text-4xl mb-4"><i class="fa-solid fa-plane-up fa-bounce text-accent"></i></div>
         <div id="loading-msg">CONNECTING...</div>
         <div id="error-log" style="margin-top:15px; font-size:11px; max-width:85%; text-align:center; word-break:break-all;"></div>
-        <!-- Rescue Button -->
         <button id="force-btn" onclick="document.getElementById('app-loading').classList.add('hidden-load')" style="display:none; margin-top:20px; padding:12px 24px; background:#e5e7eb; border-radius:12px; font-size:12px; font-weight:bold; color:#4b5563;">
             ⚠️ FORCE START (SKIP LOADING)
         </button>
@@ -93,7 +94,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 3.17 (Stable)</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 3.17 (No Weather)</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -145,7 +146,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: DASHBOARD -->
+            <!-- VIEW: DASHBOARD (Clean - No Weather) -->
             <div v-if="currentView === 'dashboard'" class="flex flex-col h-screen bg-main-bg overflow-hidden">
                 <div class="p-4 flex justify-between items-center bg-white shadow-sm sticky top-0 z-20">
                     <button @click="backToHome" class="w-10 h-10 flex items-center justify-center text-text-main active:scale-90"><i class="fa-solid fa-arrow-left text-xl"></i></button>
@@ -157,24 +158,9 @@
                 </div>
                 
                 <div class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
-                    <!-- Real Weather Banner -->
-                    <div @click="window.open(windyFullUrl)" class="mx-4 mt-2 mb-4 p-4 rounded-2xl text-white flex justify-between items-center shadow-lg cursor-pointer active:scale-[0.98] transition-transform relative overflow-hidden border-2 border-white/20" style="background-color: var(--accent)">
-                        <div class="flex items-center gap-4 relative z-10">
-                            <i :class="realWeather.icon" class="text-4xl"></i>
-                            <div>
-                                <div class="text-3xl font-black">{{ realWeather.temp }}°C</div>
-                                <div class="text-xs font-bold opacity-90 tracking-wide">{{ currentTrip.destination || 'Destination' }}</div>
-                            </div>
-                        </div>
-                        <div class="text-right relative z-10">
-                            <div class="text-xs font-bold opacity-80 mb-1"><i class="fa-solid fa-cloud-rain"></i> {{ realWeather.rain }}mm</div>
-                            <div class="text-sm font-black">H: {{ realWeather.high }}°</div>
-                            <div class="text-sm font-bold opacity-90">L: {{ realWeather.low }}°</div>
-                        </div>
-                    </div>
-
+                    
                     <!-- Date Scroll (Timeline) -->
-                    <div class="px-4 mb-4">
+                    <div class="px-4 mb-4 mt-4">
                         <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
                             <div v-for="(d, idx) in tripDates" :key="idx" class="flex-shrink-0 w-16 h-16 bg-white rounded-xl flex flex-col items-center justify-center shadow-sm border border-gray-100">
                                 <span class="text-[10px] text-gray-400 font-bold uppercase">{{ d.split('/')[2] }}</span>
@@ -342,11 +328,12 @@
             const auth = getAuth(app);
             const db = getFirestore(app);
             window.fb = { auth, db, signInAnonymously, signOut, onAuthStateChanged, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, arrayUnion, getDoc };
-            // CRITICAL: Signal readiness immediately
+            window.isFirebaseReady = true; // CRITICAL FLAG
             window.dispatchEvent(new Event('firebase-ready'));
         } catch (e) {
             console.error(e);
-            document.getElementById('error-log').innerText = "Firebase Init Error: " + e.message;
+            const log = document.getElementById('error-log');
+            if(log) log.innerText = "FB Init Error: " + e.message;
             document.getElementById('force-btn').style.display = 'block';
         }
     </script>
@@ -368,7 +355,6 @@
         const themeConfig = { classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' }, postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } };
         const cityData = { 'taipei': { lat: 25.03, lon: 121.56, code: 'TPE' }, 'kaohsiung': { lat: 22.62, lon: 120.30, code: 'KHH' }, 'taichung': { lat: 24.14, lon: 120.68, code: 'RMQ' }, 'tokyo': { lat: 35.67, lon: 139.65, code: 'NRT' }, 'osaka': { lat: 34.69, lon: 135.50, code: 'KIX' }, 'fukuoka': { lat: 33.59, lon: 130.40, code: 'FUK' }, 'sapporo': { lat: 43.06, lon: 141.35, code: 'CTS' }, 'okinawa': { lat: 26.21, lon: 127.68, code: 'OKA' }, 'seoul': { lat: 37.56, lon: 126.97, code: 'ICN' }, 'busan': { lat: 35.17, lon: 129.07, code: 'PUS' }, 'jeju': { lat: 33.49, lon: 126.53, code: 'CJU' }, 'bangkok': { lat: 13.75, lon: 100.50, code: 'BKK' }, 'singapore': { lat: 1.35, lon: 103.81, code: 'SIN' }, 'hong kong': { lat: 22.31, lon: 114.16, code: 'HKG' }, 'macau': { lat: 22.19, lon: 113.54, code: 'MFM' }, 'los angeles': { lat: 34.05, lon: -118.24, code: 'LAX' }, 'new york': { lat: 40.71, lon: -74.00, code: 'JFK' }, 'london': { lat: 51.50, lon: -0.12, code: 'LHR' }, 'paris': { lat: 48.85, lon: 2.35, code: 'CDG' } };
         const getAirportCode = (city) => { if(!city) return ''; const lower = city.toLowerCase().trim(); return cityData[lower] ? cityData[lower].code : city.substring(0,3).toUpperCase(); };
-        const getWeatherIcon = (code) => { if (code === 0) return 'fa-solid fa-sun'; if (code >= 1 && code <= 3) return 'fa-solid fa-cloud-sun'; if (code >= 45 && code <= 48) return 'fa-solid fa-smog'; if (code >= 51 && code <= 67) return 'fa-solid fa-cloud-rain'; if (code >= 71 && code <= 77) return 'fa-solid fa-snowflake'; if (code >= 80 && code <= 82) return 'fa-solid fa-cloud-showers-heavy'; if (code >= 95) return 'fa-solid fa-bolt'; return 'fa-solid fa-cloud'; };
 
         createApp({
             setup() {
@@ -402,22 +388,11 @@
                 const newMemberName = ref('');
                 const calcCurrency = ref('JPY'); const calcInput = ref(''); const expenseNote = ref(''); const expensePayer = ref('Me'); const expenseSplitters = ref(['Me']); 
                 const rates = { JPY: 0.22, KRW: 0.024, USD: 32.1, EUR: 34.5, THB: 0.9 };
-                const realWeather = ref({ temp: '--', high: '--', low: '--', rain: '0', icon: 'fa-solid fa-spinner fa-spin' });
-
-                const fetchRealWeather = async (city) => {
-                    if(!city) return;
-                    let lat = 23.5, lon = 121.0; 
-                    const lowerCity = city.toLowerCase().trim();
-                    if(cityData[lowerCity]) { lat = cityData[lowerCity].lat; lon = cityData[lowerCity].lon; }
-                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
-                    try { const res = await fetch(url); const data = await res.json(); realWeather.value = { temp: Math.round(data.current.temperature_2m), rain: data.current.precipitation, high: Math.round(data.daily.temperature_2m_max[0]), low: Math.round(data.daily.temperature_2m_min[0]), icon: getWeatherIcon(data.current.weather_code) }; } catch (e) { console.error(e); realWeather.value.icon = 'fa-solid fa-circle-exclamation'; }
-                };
-                const windyFullUrl = computed(() => { let lat = 23.5; let lon = 121.0; if(currentTrip.value.destination) { const city = currentTrip.value.destination.toLowerCase().trim(); if(cityData[city]) { lat = cityData[city].lat; lon = cityData[city].lon; } } return `https://www.windy.com/?${lat},${lon},9`; });
-
+                
                 let unsubscribeTrips = null; let unsubscribeCurrentTrip = null;
 
                 // ============================================
-                // CRITICAL CONNECTION LOGIC (Race Condition Fix)
+                // CRITICAL CONNECTION LOGIC (No Weather)
                 // ============================================
                 const initApp = () => { 
                     if(window.fb && window.fb.auth) { 
@@ -432,23 +407,19 @@
                 };
 
                 onMounted(() => {
-                    // Strategy 1: Check immediately
-                    if(window.fb) {
+                    // Check if Firebase is already ready
+                    if(window.isFirebaseReady) {
                         initApp();
                     } else {
-                        // Strategy 2: Event Listener
                         window.addEventListener('firebase-ready', initApp);
                         
-                        // Strategy 3: Aggressive Polling (100ms for 5s)
-                        let attempts = 0;
-                        const poller = setInterval(() => {
+                        // Periodic check fallback
+                        const checkInterval = setInterval(() => {
                             if(window.fb) {
                                 initApp();
-                                clearInterval(poller);
+                                clearInterval(checkInterval);
                             }
-                            attempts++;
-                            if(attempts > 50) clearInterval(poller); // Stop after 5s
-                        }, 100);
+                        }, 200); // Fast check
                     }
 
                     // Timeout Rescue (4s)
@@ -468,10 +439,9 @@
                 const saveUserName = async () => { localStorage.setItem('trip_user_name', userName.value); if(currentTrip.value.id && user.value) { const update = {}; update[`memberNames.${user.value.uid}`] = userName.value; await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", currentTrip.value.id), update); } };
                 const getDisplayName = (uid) => { if (uid === user.value?.uid) return userName.value; if (currentTrip.value.memberNames && currentTrip.value.memberNames[uid]) return currentTrip.value.memberNames[uid]; if (uid === 'Me') return 'Me'; return uid; };
                 
-                // FORCE ERROR ALERT
                 const login = async () => { 
                     try { 
-                        if (!window.fb) throw new Error("Firebase not ready. Please wait or refresh."); 
+                        if (!window.fb) throw new Error("Firebase not ready. Please wait."); 
                         await window.fb.signInAnonymously(window.fb.auth); 
                     } catch (e) { 
                         errorMessage.value = e.message; 
@@ -481,7 +451,7 @@
                 const logout = () => window.fb.signOut(window.fb.auth);
                 const loadTrips = () => { loading.value = true; if(unsubscribeTrips) unsubscribeTrips(); const q = window.fb.query(window.fb.collection(window.fb.db, "trips"), window.fb.where("members", "array-contains", user.value.uid)); unsubscribeTrips = window.fb.onSnapshot(q, (snap) => { trips.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); loading.value = false; }); };
                 const backToHome = () => { currentView.value = 'home'; if(unsubscribeCurrentTrip) { unsubscribeCurrentTrip(); unsubscribeCurrentTrip = null; } currentTrip.value = {}; loadTrips(); };
-                const openTrip = (trip) => { if(unsubscribeCurrentTrip) unsubscribeCurrentTrip(); unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => { if(doc.exists()) { currentTrip.value = { id: doc.id, ...doc.data() }; if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate); fetchRealWeather(currentTrip.value.destination); } }); currentView.value = 'dashboard'; };
+                const openTrip = (trip) => { if(unsubscribeCurrentTrip) unsubscribeCurrentTrip(); unsubscribeCurrentTrip = window.fb.onSnapshot(window.fb.doc(window.fb.db, "trips", trip.id), (doc) => { if(doc.exists()) { currentTrip.value = { id: doc.id, ...doc.data() }; if(!selectedDate.value) selectedDate.value = formatDate(currentTrip.value.startDate); } }); currentView.value = 'dashboard'; };
                 const openNewTripModal = () => { isModalOpen.value = true; };
                 const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
                 
@@ -584,7 +554,7 @@
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt)}`),
-                    setTheme, currentTheme, userName, saveUserName, getDisplayName, realWeather, windyFullUrl
+                    setTheme, currentTheme, userName, saveUserName, getDisplayName
                 };
             }
         }).mount('#app');
