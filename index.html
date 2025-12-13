@@ -2,6 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- viewport 設定維持不變，這是為了讓 PWA 全螢幕體驗更好 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Trip Planner v5.0 (Final)</title>
     
@@ -120,6 +121,14 @@
         .hidden-load { opacity: 0; pointer-events: none; }
         [v-cloak] { display: none; }
         button, .bg-accent { transition: background-color 0.3s ease, color 0.3s ease; }
+
+        /* --- [修改] 新增適配瀏海與頂部間距的 class --- */
+        .safe-top-padding {
+            /* 基礎值：在 Windows 或無瀏海手機上保留 15px 避免貼頂 */
+            padding-top: 15px; 
+            /* 進階值：如果有瀏海 (iOS Notch)，會使用系統定義的安全高度並額外加一點 */
+            padding-top: max(15px, env(safe-area-inset-top)); 
+        }
     </style>
 </head>
 <body class="selection:bg-accent selection:text-white">
@@ -129,10 +138,11 @@
         <div>LOADING...</div>
     </div>
 
-    <div id="app" v-cloak class="min-h-screen relative max-w-md mx-auto overflow-hidden flex flex-col bg-main-bg transition-colors duration-500">
+    <!-- [修改] 在這裡加入了 safe-top-padding class -->
+    <div id="app" v-cloak class="safe-top-padding min-h-screen relative max-w-md mx-auto overflow-hidden flex flex-col bg-main-bg transition-colors duration-500">
 
         <!-- Login View -->
-        <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
+        <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white rounded-t-3xl">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
             <p class="mb-8 text-sm font-bold opacity-60">Version 5.0</p>
