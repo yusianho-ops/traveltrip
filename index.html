@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v4.3 (Itinerary Pro)</title>
+    <title>Trip Planner v4.4 (Checklist Logic)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -82,13 +82,12 @@
         body { background-color: var(--main-bg); color: var(--text-main); font-family: 'Inter', 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; transition: background-color 0.5s ease; }
         .scrollbar-hide::-webkit-scrollbar { display: none; } 
         
-        /* Requirement 1: Padding for inputs approx 1 char width */
         input, select, textarea { 
             background: var(--input-bg); color: var(--text-main); border: 1px solid #D1D5DB; 
-            padding: 0.8rem 0.8rem 0.8rem 1.2rem; /* Left padding increased */
+            padding: 0.8rem 0.8rem 0.8rem 1.2rem;
             border-radius: 0.75rem; font-weight: 600; outline: none; transition: all 0.2s; width: 100%; font-size: 15px !important; 
         }
-        .input-center { text-align: center; padding-left: 0.8rem; } /* Reset for centered inputs */
+        .input-center { text-align: center; padding-left: 0.8rem; }
         .input-center::placeholder { text-align: center; }
 
         input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
@@ -120,7 +119,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 4.3</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 4.4</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -195,7 +194,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: ITINERARY (Enhanced) -->
+            <!-- VIEW: ITINERARY -->
             <div v-if="currentView === 'itinerary'" class="flex flex-col h-screen bg-main-bg">
                 <div class="bg-white sticky top-0 z-30 shadow-sm">
                     <div class="p-4 flex justify-between items-center">
@@ -203,7 +202,6 @@
                         <h2 class="font-black text-xl text-text-main">{{ t('itinerary') }}</h2>
                         <div class="w-10"></div>
                     </div>
-                    <!-- Req 7: Date Scroller -->
                     <div class="flex overflow-x-auto gap-3 p-4 pt-0 scrollbar-hide">
                         <button v-for="d in tripDates" :key="d" @click="selectedDate = d" 
                             class="flex-shrink-0 px-5 py-3 rounded-2xl font-black border-2 transition-all whitespace-nowrap shadow-sm active:scale-95"
@@ -215,9 +213,7 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
-                    <!-- Add Item Box -->
                     <div class="bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
-                        <!-- Req 5: Time and Category split 50/50 -->
                         <div class="flex gap-2 mb-2">
                             <input type="time" v-model="newItem.time" class="flex-1 bg-gray-50 border-none text-center font-bold text-gray-600 rounded-xl">
                             <select v-model="newItem.category" class="flex-1 bg-gray-50 border-none font-bold text-gray-600 rounded-xl px-2">
@@ -226,7 +222,6 @@
                                 <option value="shopping">🛍️ {{ t('shopping') }}</option>
                             </select>
                         </div>
-                        <!-- Req 6: Name and Address -->
                         <input v-model="newItem.text" :placeholder="t('enterItem')" class="mb-2 bg-gray-50 border-none rounded-xl">
                         <input v-model="newItem.address" :placeholder="t('address')" class="mb-2 bg-gray-50 border-none rounded-xl text-sm">
                         
@@ -236,7 +231,7 @@
                     <div id="sortable-list" class="space-y-0 min-h-[50px]">
                          <div v-for="(item, index) in getDayItems()" :key="item.id" class="group relative">
                             
-                            <!-- Req 8: Transport Between Items (Shown ABOVE the item, if not first) -->
+                            <!-- Transport Between Items -->
                             <div v-if="index > 0" class="flex justify-center items-center py-2 relative z-0">
                                 <div class="h-8 w-0.5 bg-gray-300 absolute top-0 bottom-0 left-1/2 -translate-x-1/2 -z-10"></div>
                                 <div class="bg-white border border-gray-200 rounded-full px-3 py-1 flex items-center gap-2 shadow-sm">
@@ -257,7 +252,6 @@
                                 <div class="text-2xl">{{ item.categoryEmoji }}</div>
                                 <div class="flex-1 overflow-hidden">
                                     <div class="font-bold text-text-main text-lg leading-tight truncate">{{ item.text }}</div>
-                                    <!-- Req 6: Navigation Link -->
                                     <div v-if="item.address" @click.stop="openMap(item.address)" class="text-[10px] font-bold text-blue-400 mt-1 truncate cursor-pointer underline"><i class="fa-solid fa-location-dot"></i> {{ item.address }}</div>
                                 </div>
                                 <button @click="deleteItem(index)" class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash text-sm"></i></button>
@@ -348,7 +342,7 @@
                 </div>
             </div>
 
-            <!-- VIEW: GENERIC LIST (Collaboration) -->
+            <!-- VIEW: GENERIC LIST (Collaboration Logic Here) -->
             <div v-if="currentView === 'generic_list'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
                     <button @click="currentView = 'notes_menu'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
@@ -359,7 +353,7 @@
                     
                     <div v-for="(item, i) in getGenericList()" :key="i" class="bg-white rounded-2xl p-4 shadow-soft">
                         <div class="flex items-start gap-3">
-                            <!-- Main status (crossed out if everyone done) -->
+                            <!-- Main status (crossed out ONLY if item.done is true) -->
                             <div v-if="['todo','luggage'].includes(currentListType)" class="w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors mt-1" :class="item.done ? 'bg-green-400 border-green-400' : 'border-gray-200'">
                                 <i v-if="item.done" class="fa-solid fa-check text-white text-xs"></i>
                             </div>
@@ -379,8 +373,9 @@
                             <button @click="removeGenericItem(i)" class="w-8 h-8 rounded-full bg-gray-50 text-red-300 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-trash text-xs"></i></button>
                         </div>
 
-                        <!-- Req 4: Collaborative Checkboxes for ALL current members -->
+                        <!-- Collaborative Checkboxes for ALL current members -->
                         <div v-if="['todo','luggage'].includes(currentListType)" class="mt-3 pt-3 border-t border-dashed border-gray-100 flex flex-wrap gap-2">
+                            <!-- Dynamically generate checkboxes for ALL current trip members -->
                             <div v-for="m in (currentTrip.members || ['Me'])" :key="m" 
                                  @click="toggleSubItem(item, m)"
                                  class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg cursor-pointer active:scale-95 transition-transform"
@@ -625,32 +620,6 @@
                 </div>
             </div>
 
-            <!-- HOTEL MODAL (Initial Add) -->
-             <div v-if="showHotelModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                <div class="bg-main-bg w-full max-w-sm rounded-3xl shadow-2xl flex flex-col max-h-[80vh]">
-                    <div class="p-4 bg-white flex justify-between items-center border-b border-gray-100"><h3 class="font-black text-lg">{{ t('hotels') }}</h3><button @click="showHotelModal=false" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">✕</button></div>
-                    <div class="p-4 space-y-4 overflow-y-auto">
-                        <div class="bg-white p-4 rounded-2xl shadow-soft">
-                            <p class="text-xs font-bold text-accent mb-2">{{ t('addHotel') }}</p>
-                            <input v-model="newHotel.name" :placeholder="t('hotelName')" class="mb-2 bg-gray-50 border-none text-sm input-center"><input v-model="newHotel.address" :placeholder="t('hotelAddr')" class="mb-2 bg-gray-50 border-none text-sm input-center">
-                            <div class="flex gap-2 mb-2"><input type="date" required v-model="newHotel.checkIn" class="bg-gray-50 border-none text-sm"><input type="date" required v-model="newHotel.checkOut" class="bg-gray-50 border-none text-sm"></div>
-                            <button @click="addHotel" class="w-full bg-accent text-white font-bold py-3 rounded-xl shadow-lg">ADD</button>
-                        </div>
-                        <div v-for="(h,i) in (currentTrip.hotels||[])" :key="i" @click="openHotelDetail(h, i)" class="bg-white rounded-2xl overflow-hidden shadow-soft relative group cursor-pointer active:scale-98">
-                            <div class="h-24 bg-gray-200">
-                                <img v-if="h.photos && h.photos.length > 0" :src="h.photos[0]" class="w-full h-full object-cover">
-                                <div v-else class="w-full h-full flex items-center justify-center text-gray-300"><i class="fa-solid fa-bed text-3xl"></i></div>
-                            </div>
-                            <div class="p-4">
-                                <div class="font-black text-lg text-text-main">{{ h.name }}</div>
-                                <div class="text-xs text-gray-500 mb-2 truncate"><i class="fa-solid fa-location-dot"></i> {{ h.address || 'No Address' }}</div>
-                                <div class="flex justify-between text-xs font-bold bg-gray-50 p-2 rounded-lg"><span>IN: {{ formatDate(h.checkIn) }}</span><span>OUT: {{ formatDate(h.checkOut) }}</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- TRANSLATION MODAL -->
             <div v-if="showTranslationModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
                 <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4 text-center">
@@ -772,11 +741,13 @@
                     
                     const creatorId = user.value.uid;
                     // Default tasks
-                    const defaultTasks = ['護照日期檢查', '入境憑證辦理', '換外幣'].map(txt => ({ 
+                    const defaultTaskNames = ["護照日期檢查", "入境憑證辦理", "換外幣"];
+                    const defaultTasks = defaultTaskNames.map(txt => ({ 
                         text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId 
                     }));
                     // Default luggage
-                    const defaultLuggage = ['護照', '充電器', '盥洗用具'].map(txt => ({ 
+                    const defaultLuggageNames = ["護照", "充電器", "盥洗用具"];
+                    const defaultLuggage = defaultLuggageNames.map(txt => ({ 
                         text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId 
                     }));
 
