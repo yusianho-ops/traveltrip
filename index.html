@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v4.4 (Checklist Logic)</title>
+    <title>Trip Planner v4.5 (Center Aligned)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -82,13 +82,19 @@
         body { background-color: var(--main-bg); color: var(--text-main); font-family: 'Inter', 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; transition: background-color 0.5s ease; }
         .scrollbar-hide::-webkit-scrollbar { display: none; } 
         
+        /* UPDATED: All inputs centered */
         input, select, textarea { 
             background: var(--input-bg); color: var(--text-main); border: 1px solid #D1D5DB; 
-            padding: 0.8rem 0.8rem 0.8rem 1.2rem;
+            padding: 0.8rem; /* Balanced padding */
+            text-align: center; /* Center alignment for text and placeholder */
             border-radius: 0.75rem; font-weight: 600; outline: none; transition: all 0.2s; width: 100%; font-size: 15px !important; 
         }
-        .input-center { text-align: center; padding-left: 0.8rem; }
-        .input-center::placeholder { text-align: center; }
+        /* Ensure placeholders follow center alignment */
+        input::placeholder, textarea::placeholder { text-align: center; }
+
+        /* Force previous utility classes to conform to center alignment */
+        .input-center { text-align: center; } 
+        .input-left { text-align: center; padding-left: 0.8rem; }
 
         input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
         
@@ -119,7 +125,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 4.4</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 4.5</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -616,6 +622,32 @@
                             <div class="mb-1 font-bold text-gray-400">{{ t('split') }}</div><div class="flex flex-wrap gap-2"><label v-for="m in (currentTrip.members || ['Me'])" :key="m" class="cursor-pointer bg-gray-100 px-2 py-1 rounded-md flex items-center gap-1"><input type="checkbox" :value="m" v-model="expenseSplitters" class="w-3 h-3 accent-accent"> {{ getDisplayName(m) }}</label></div>
                         </div>
                         <div class="grid grid-cols-4 gap-2"><button v-for="btn in ['7','8','9','DEL','4','5','6','C','1','2','3','.','00','0']" :key="btn" @click="handleCalc(btn)" class="h-14 bg-white text-xl font-bold rounded-xl shadow-sm active:bg-gray-100" :class="{'text-red-400': btn==='DEL' || btn==='C'}">{{ btn }}</button><button @click="saveExpense" class="col-span-2 h-14 bg-accent text-white text-xl font-bold rounded-xl shadow-lg active:scale-95">SAVE</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOTEL MODAL (Initial Add) -->
+             <div v-if="showHotelModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-main-bg w-full max-w-sm rounded-3xl shadow-2xl flex flex-col max-h-[80vh]">
+                    <div class="p-4 bg-white flex justify-between items-center border-b border-gray-100"><h3 class="font-black text-lg">{{ t('hotels') }}</h3><button @click="showHotelModal=false" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">✕</button></div>
+                    <div class="p-4 space-y-4 overflow-y-auto">
+                        <div class="bg-white p-4 rounded-2xl shadow-soft">
+                            <p class="text-xs font-bold text-accent mb-2">{{ t('addHotel') }}</p>
+                            <input v-model="newHotel.name" :placeholder="t('hotelName')" class="mb-2 bg-gray-50 border-none text-sm input-center"><input v-model="newHotel.address" :placeholder="t('hotelAddr')" class="mb-2 bg-gray-50 border-none text-sm input-center">
+                            <div class="flex gap-2 mb-2"><input type="date" required v-model="newHotel.checkIn" class="bg-gray-50 border-none text-sm"><input type="date" required v-model="newHotel.checkOut" class="bg-gray-50 border-none text-sm"></div>
+                            <button @click="addHotel" class="w-full bg-accent text-white font-bold py-3 rounded-xl shadow-lg">ADD</button>
+                        </div>
+                        <div v-for="(h,i) in (currentTrip.hotels||[])" :key="i" @click="openHotelDetail(h, i)" class="bg-white rounded-2xl overflow-hidden shadow-soft relative group cursor-pointer active:scale-98">
+                            <div class="h-24 bg-gray-200">
+                                <img v-if="h.photos && h.photos.length > 0" :src="h.photos[0]" class="w-full h-full object-cover">
+                                <div v-else class="w-full h-full flex items-center justify-center text-gray-300"><i class="fa-solid fa-bed text-3xl"></i></div>
+                            </div>
+                            <div class="p-4">
+                                <div class="font-black text-lg text-text-main">{{ h.name }}</div>
+                                <div class="text-xs text-gray-500 mb-2 truncate"><i class="fa-solid fa-location-dot"></i> {{ h.address || 'No Address' }}</div>
+                                <div class="flex justify-between text-xs font-bold bg-gray-50 p-2 rounded-lg"><span>IN: {{ formatDate(h.checkIn) }}</span><span>OUT: {{ formatDate(h.checkOut) }}</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
