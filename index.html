@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v4.5 (Center Aligned)</title>
+    <title>Trip Planner v4.6 (Voucher & Hotel Sync)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -82,17 +82,13 @@
         body { background-color: var(--main-bg); color: var(--text-main); font-family: 'Inter', 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; transition: background-color 0.5s ease; }
         .scrollbar-hide::-webkit-scrollbar { display: none; } 
         
-        /* UPDATED: All inputs centered */
         input, select, textarea { 
             background: var(--input-bg); color: var(--text-main); border: 1px solid #D1D5DB; 
-            padding: 0.8rem; /* Balanced padding */
-            text-align: center; /* Center alignment for text and placeholder */
+            padding: 0.8rem;
+            text-align: center;
             border-radius: 0.75rem; font-weight: 600; outline: none; transition: all 0.2s; width: 100%; font-size: 15px !important; 
         }
-        /* Ensure placeholders follow center alignment */
         input::placeholder, textarea::placeholder { text-align: center; }
-
-        /* Force previous utility classes to conform to center alignment */
         .input-center { text-align: center; } 
         .input-left { text-align: center; padding-left: 0.8rem; }
 
@@ -125,7 +121,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 4.5</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 4.6</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -496,11 +492,12 @@
                             <div class="flex-1 pr-2">
                                 <h3 class="font-black text-lg truncate">{{ v.title }}</h3>
                                 <p class="text-xs text-gray-500 mb-2">{{ v.note }}</p>
-                                <button v-if="v.file" @click="openFile(v.file)" class="text-xs bg-orange-50 text-orange-500 px-2 py-1 rounded font-bold flex items-center gap-1 w-fit">
-                                    <i :class="v.fileType === 'pdf' ? 'fa-solid fa-file-pdf' : 'fa-solid fa-image'"></i> {{ v.fileType === 'pdf' ? t('openPdf') : t('viewImg') }}
-                                </button>
+                                <div v-if="v.file" class="mt-2">
+                                    <img v-if="v.fileType !== 'pdf'" :src="v.file" class="w-full rounded-xl shadow-sm border border-gray-100 object-cover max-h-96">
+                                    <iframe v-else :src="v.file" class="w-full h-64 rounded-xl shadow-sm border border-gray-100"></iframe>
+                                </div>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="flex gap-2 absolute top-4 right-4">
                                 <button @click="editVoucher(v, i)" class="text-blue-300 w-8 h-8 flex items-center justify-center bg-blue-50 rounded-full"><i class="fa-solid fa-pen"></i></button>
                                 <button @click="removeVoucher(i)" class="text-red-300 w-8 h-8 flex items-center justify-center bg-red-50 rounded-full"><i class="fa-solid fa-trash"></i></button>
                             </div>
@@ -820,6 +817,7 @@
                     showHotelModal.value = false;
                     syncUpdate(); 
                     openHotelDetail(addedHotel, currentTrip.value.hotels.length - 1);
+                    syncHotelToItinerary(addedHotel); // Auto-sync on add
                 };
                 const removeHotel = (i) => { currentTrip.value.hotels.splice(i,1); syncUpdate(); };
                 const openHotelDetail = (h, i) => {
@@ -831,7 +829,26 @@
                 };
                 const saveHotelDetail = () => {
                     syncUpdate();
+                    syncHotelToItinerary(currentHotel.value); // Auto-sync on edit/save
                     currentView.value = 'dashboard';
+                };
+                const syncHotelToItinerary = (hotel) => {
+                    if(!hotel.checkIn || !hotel.checkOut || !hotel.name) return;
+                    let current = new Date(hotel.checkIn);
+                    const end = new Date(hotel.checkOut);
+                    current.setDate(current.getDate() + 1); // Start from next morning
+                    while(current <= end) {
+                        const dStr = formatDate(current.toISOString().split('T')[0]);
+                        if(!currentTrip.value.itinerary) currentTrip.value.itinerary = {};
+                        if(!currentTrip.value.itinerary[dStr]) currentTrip.value.itinerary[dStr] = [];
+                        const list = currentTrip.value.itinerary[dStr];
+                        const exists = list.some(i => i.text === hotel.name && i.time === '09:00');
+                        if(!exists) {
+                            list.unshift({ id: Date.now() + Math.random(), time: '09:00', text: hotel.name, category: 'accommodation', categoryEmoji: '🏨', address: hotel.address || '', travelMode: '', travelTime: '' });
+                            list.sort((a,b)=>a.time.localeCompare(b.time));
+                        }
+                        current.setDate(current.getDate() + 1);
+                    }
                 };
                 const addHotelPhoto = (e) => {
                     if(!currentHotel.value.photos) currentHotel.value.photos = [];
