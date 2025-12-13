@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v4.6 (Voucher & Hotel Sync)</title>
+    <title>Trip Planner v4.7 (Auto Time & Routing)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -121,7 +121,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 4.6</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 4.7</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -233,16 +233,17 @@
                     <div id="sortable-list" class="space-y-0 min-h-[50px]">
                          <div v-for="(item, index) in getDayItems()" :key="item.id" class="group relative">
                             
-                            <!-- Transport Between Items -->
+                            <!-- Transport Between Items with Route Button -->
                             <div v-if="index > 0" class="flex justify-center items-center py-2 relative z-0">
                                 <div class="h-8 w-0.5 bg-gray-300 absolute top-0 bottom-0 left-1/2 -translate-x-1/2 -z-10"></div>
-                                <div class="bg-white border border-gray-200 rounded-full px-3 py-1 flex items-center gap-2 shadow-sm">
-                                    <select v-model="item.travelMode" @change="syncUpdate" class="text-xs font-bold bg-transparent border-none p-0 w-auto !py-0 !pl-0">
+                                <div class="bg-white border border-gray-200 rounded-full pl-3 pr-1 py-1 flex items-center gap-2 shadow-sm">
+                                    <select v-model="item.travelMode" @change="recalculateTimes(selectedDate)" class="text-xs font-bold bg-transparent border-none p-0 w-auto !py-0 !pl-0">
                                         <option value="car">🚗 Car</option>
                                         <option value="transit">🚆 Transit</option>
                                         <option value="walk">🚶 Walk</option>
                                     </select>
-                                    <input v-model="item.travelTime" @change="syncUpdate" placeholder="15m" class="text-xs font-bold w-10 text-center bg-transparent border-b border-gray-300 p-0 !pl-0 rounded-none focus:border-accent">
+                                    <input v-model="item.travelTime" @change="recalculateTimes(selectedDate)" placeholder="15m" class="text-xs font-bold w-10 text-center bg-transparent border-b border-gray-300 p-0 !pl-0 !pr-0 rounded-none focus:border-accent">
+                                    <button @click="openRoute(getDayItems()[index-1], item)" class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-[10px]"><i class="fa-solid fa-diamond-turn-right"></i></button>
                                 </div>
                             </div>
 
@@ -391,79 +392,6 @@
                     </div>
 
                     <div v-if="getGenericList().length === 0" class="text-center mt-10 text-gray-400 font-bold opacity-50">{{ t('emptyList') }}</div>
-                </div>
-            </div>
-
-            <!-- VIEW: FLIGHTS -->
-            <div v-if="currentView === 'flights'" class="flex flex-col h-screen bg-main-bg">
-                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
-                    <button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
-                    <h2 class="font-black text-xl text-text-main">{{ t('flights') }}</h2>
-                    <button @click="showAddFlightModal=true" class="w-10 h-10 flex items-center justify-center text-accent active:scale-90"><i class="fa-solid fa-plus text-xl"></i></button>
-                </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-                    <div v-if="!currentTrip.flights || currentTrip.flights.length === 0" class="text-center text-gray-400 font-bold mt-10 opacity-50">{{ t('noFlights') }}</div>
-                    
-                    <div v-for="(f, i) in (currentTrip.flights||[])" :key="i" @click="openFlightDetail(f, i)" class="bg-white rounded-3xl overflow-hidden shadow-soft cursor-pointer active:scale-[0.99] transition-transform relative border border-gray-100">
-                        <div class="bg-accent-light/30 p-4 border-b border-gray-100 flex justify-between items-center">
-                            <span class="font-bold text-gray-500 text-xs tracking-widest uppercase">{{ f.airline || t('airline') }}</span>
-                            <span class="bg-white/50 w-8 h-8 rounded-full flex items-center justify-center text-accent"><i class="fa-solid fa-pen text-xs"></i></span>
-                        </div>
-                        <div class="p-6">
-                            <div class="text-center mb-6">
-                                <div class="text-5xl font-black text-text-main tracking-tight">{{ f.code || 'FLT' }}</div>
-                            </div>
-                            <div class="flex justify-between items-center mb-6 px-2">
-                                <div class="text-center">
-                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.origin || 'DEP' }}</div>
-                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.time || '--:--' }}</div>
-                                    <div class="mt-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full inline-block">{{ f.originCity || t('originCity') }}</div>
-                                </div>
-                                <div class="flex-1 flex flex-col items-center justify-center px-4 relative -top-3 space-y-2">
-                                    <div class="text-[10px] text-gray-400 font-bold">{{ t('direct') }}</div>
-                                    <div class="w-full h-0.5 bg-gray-200 relative"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
-                                    <div class="text-[10px] text-gray-400 font-bold">{{ formatDate(f.date) }}</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.dest || 'ARR' }}</div>
-                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.arrTime || '--:--' }}</div>
-                                    <div class="mt-1 px-2 py-0.5 bg-orange-400 text-white text-[10px] font-bold rounded-full inline-block">{{ f.destCity || t('destCity') }}</div>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4 border-t border-dashed border-gray-200 pt-4">
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('baggage') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-suitcase text-sm text-accent"></i> {{ f.baggage || '-' }}</div></div>
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('aircraft') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-plane text-sm text-accent"></i> {{ f.aircraft || '-' }}</div></div>
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('price') }}</div><div class="font-black text-lg text-text-main">NT${{ f.cost || '-' }}</div></div>
-                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('date') }}</div><div class="font-black text-lg text-text-main">{{ formatDate(f.date) }}</div></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: BUDGET -->
-            <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg">
-                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('budget') }}</h2><div class="w-10"></div></div>
-                <div class="p-4 overflow-y-auto pb-24 space-y-4">
-                    <div class="bg-text-main text-white p-6 rounded-3xl shadow-lg text-center">
-                        <p class="text-xs font-bold opacity-70 mb-1">{{ t('totalExpense') }} (TWD)</p>
-                        <p class="text-4xl font-black mb-2">NT$ {{ totalExpense }}</p>
-                        <div v-if="Object.keys(groupedTotals).length > 0" class="border-t border-white/20 pt-2 flex flex-wrap justify-center gap-2">
-                            <span v-for="(amount, curr) in groupedTotals" :key="curr" class="text-xs font-bold bg-white/20 px-2 py-1 rounded">{{ curr }} Total: {{ amount }}</span>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-2xl p-4 shadow-soft">
-                        <h3 class="font-bold text-sm mb-3 text-gray-400">{{ t('members') }}</h3>
-                        <div class="flex gap-2 mb-3"><input v-model="newMemberName" :placeholder="t('name')" class="flex-1 bg-gray-50 border-none text-sm"><button @click="addMember" class="bg-gray-200 w-10 rounded-xl font-bold">+</button></div>
-                        <div class="flex flex-wrap gap-2"><span v-for="(m, i) in (currentTrip.members || ['Me'])" :key="i" class="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold flex items-center gap-2">{{ getDisplayName(m) }} <button @click="removeMember(i)" v-if="m !== 'Me'" class="text-red-400">x</button></span></div>
-                    </div>
-                    <div class="space-y-3">
-                        <h3 class="font-bold text-sm text-gray-400 px-1">{{ t('history') }}</h3>
-                        <div v-for="(exp, i) in (currentTrip.expenses || []).slice().reverse()" :key="i" class="bg-white p-4 rounded-2xl flex justify-between items-center shadow-soft">
-                            <div><span class="font-bold block text-text-main">{{ exp.note }}</span><span class="text-xs text-gray-400 block mt-0.5">{{ getDisplayName(exp.payer) }} {{ t('paidFor') }} {{ (exp.splitters||[]).map(s=>getDisplayName(s)).join(', ') }}</span><span v-if="exp.currency && exp.currency !== 'TWD'" class="text-xs font-bold text-accent bg-accent-light px-1 rounded">{{ exp.original }} {{ exp.currency }}</span></div>
-                            <div class="text-right"><span class="font-black block text-text-main">NT$ {{ exp.twd }}</span><button @click="deleteExpense(i)" class="text-red-300 text-xs mt-1"><i class="fa-solid fa-trash"></i></button></div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -684,6 +612,15 @@
         const cityToCodeMap = { 'taipei': 'TPE', 'kaohsiung': 'KHH', 'taichung': 'RMQ', 'tokyo': 'NRT', 'osaka': 'KIX', 'fukuoka': 'FUK', 'sapporo': 'CTS', 'okinawa': 'OKA', 'seoul': 'ICN', 'busan': 'PUS', 'jeju': 'CJU', 'bangkok': 'BKK', 'singapore': 'SIN', 'hong kong': 'HKG', 'macau': 'MFM', 'los angeles': 'LAX', 'new york': 'JFK', 'london': 'LHR', 'paris': 'CDG' };
         const getAirportCode = (city) => { if(!city) return ''; const lower = city.toLowerCase().trim(); return cityToCodeMap[lower] || city.substring(0,3).toUpperCase(); };
 
+        // Helper to add minutes to HH:MM
+        const addMinutes = (timeStr, mins) => {
+            if(!timeStr) return '';
+            let [h, m] = timeStr.split(':').map(Number);
+            let date = new Date(); date.setHours(h, m, 0, 0);
+            date.setMinutes(date.getMinutes() + parseInt(mins || 0));
+            return date.toTimeString().slice(0,5);
+        };
+
         createApp({
             setup() {
                 const user = ref(null); const trips = ref([]); const currentTrip = ref({});
@@ -764,37 +701,12 @@
                 const openNewTripModal = () => { isModalOpen.value = true; };
                 const joinTrip = async () => { if(!joinTripId.value) return; try { await window.fb.updateDoc(window.fb.doc(window.fb.db, "trips", joinTripId.value), { members: window.fb.arrayUnion(user.value.uid) }); alert("Joined!"); joinTripId.value = ''; loadTrips(); } catch(e) { alert("Failed: " + e.message); } };
                 
-                // Requirement 2 & 3: Default Items on Create
                 const createCloudTrip = async () => { 
                     if (!form.value.destination || !form.value.startDate) return; 
-                    
                     const creatorId = user.value.uid;
-                    // Default tasks
-                    const defaultTaskNames = ["護照日期檢查", "入境憑證辦理", "換外幣"];
-                    const defaultTasks = defaultTaskNames.map(txt => ({ 
-                        text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId 
-                    }));
-                    // Default luggage
-                    const defaultLuggageNames = ["護照", "充電器", "盥洗用具"];
-                    const defaultLuggage = defaultLuggageNames.map(txt => ({ 
-                        text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId 
-                    }));
-
-                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { 
-                        ...form.value, 
-                        members: [creatorId], 
-                        memberNames: {}, 
-                        itinerary: {}, 
-                        todos: defaultLuggage, 
-                        wishlist: [], 
-                        places: [], 
-                        tasks: defaultTasks, 
-                        expenses: [], 
-                        flights: [], 
-                        hotels: [], 
-                        vouchers: [], 
-                        createdAt: Date.now() 
-                    }); 
+                    const defaultTasks = ["護照日期檢查", "入境憑證辦理", "換外幣"].map(txt => ({ text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId }));
+                    const defaultLuggage = ["護照", "充電器", "盥洗用具"].map(txt => ({ text: txt, done: false, subStatus: { [creatorId]: false }, owner: creatorId }));
+                    await window.fb.addDoc(window.fb.collection(window.fb.db, "trips"), { ...form.value, members: [creatorId], memberNames: {}, itinerary: {}, todos: defaultLuggage, wishlist: [], places: [], tasks: defaultTasks, expenses: [], flights: [], hotels: [], vouchers: [], createdAt: Date.now() }); 
                     isModalOpen.value = false; 
                 };
                 
@@ -817,26 +729,16 @@
                     showHotelModal.value = false;
                     syncUpdate(); 
                     openHotelDetail(addedHotel, currentTrip.value.hotels.length - 1);
-                    syncHotelToItinerary(addedHotel); // Auto-sync on add
+                    syncHotelToItinerary(addedHotel);
                 };
                 const removeHotel = (i) => { currentTrip.value.hotels.splice(i,1); syncUpdate(); };
-                const openHotelDetail = (h, i) => {
-                    currentHotel.value = h;
-                    currentHotelIndex.value = i;
-                    currentHotelPhotoIndex.value = 0;
-                    currentView.value = 'hotel_detail';
-                    showHotelModal.value = false;
-                };
-                const saveHotelDetail = () => {
-                    syncUpdate();
-                    syncHotelToItinerary(currentHotel.value); // Auto-sync on edit/save
-                    currentView.value = 'dashboard';
-                };
+                const openHotelDetail = (h, i) => { currentHotel.value = h; currentHotelIndex.value = i; currentHotelPhotoIndex.value = 0; currentView.value = 'hotel_detail'; showHotelModal.value = false; };
+                const saveHotelDetail = () => { syncUpdate(); syncHotelToItinerary(currentHotel.value); currentView.value = 'dashboard'; };
                 const syncHotelToItinerary = (hotel) => {
                     if(!hotel.checkIn || !hotel.checkOut || !hotel.name) return;
                     let current = new Date(hotel.checkIn);
                     const end = new Date(hotel.checkOut);
-                    current.setDate(current.getDate() + 1); // Start from next morning
+                    current.setDate(current.getDate() + 1);
                     while(current <= end) {
                         const dStr = formatDate(current.toISOString().split('T')[0]);
                         if(!currentTrip.value.itinerary) currentTrip.value.itinerary = {};
@@ -854,27 +756,9 @@
                     if(!currentHotel.value.photos) currentHotel.value.photos = [];
                     if(currentHotel.value.photos.length >= 3) { alert("Max 3 photos"); return; }
                     const f = e.target.files[0];
-                    if(f) {
-                        const r = new FileReader();
-                        r.onload = (ev) => {
-                             const i = new Image();
-                             i.onload = () => {
-                                 const c = document.createElement('canvas'); const ctx = c.getContext('2d');
-                                 const s = 800/i.width; c.width=800; c.height=i.height*s;
-                                 ctx.drawImage(i,0,0,c.width,c.height);
-                                 currentHotel.value.photos.push(c.toDataURL('image/jpeg', 0.6));
-                                 syncUpdate();
-                             };
-                             i.src = ev.target.result;
-                        };
-                        r.readAsDataURL(f);
-                    }
+                    if(f) { const r = new FileReader(); r.onload = (ev) => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 800/i.width; c.width=800; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); currentHotel.value.photos.push(c.toDataURL('image/jpeg', 0.6)); syncUpdate(); }; i.src = ev.target.result; }; r.readAsDataURL(f); }
                 };
-                const deleteHotelPhoto = () => {
-                    currentHotel.value.photos.splice(currentHotelPhotoIndex.value, 1);
-                    if(currentHotelPhotoIndex.value > 0) currentHotelPhotoIndex.value--;
-                    syncUpdate();
-                };
+                const deleteHotelPhoto = () => { currentHotel.value.photos.splice(currentHotelPhotoIndex.value, 1); if(currentHotelPhotoIndex.value > 0) currentHotelPhotoIndex.value--; syncUpdate(); };
                 const nextPhoto = () => { if(currentHotel.value.photos.length > 0) currentHotelPhotoIndex.value = (currentHotelPhotoIndex.value + 1) % currentHotel.value.photos.length; };
                 const prevPhoto = () => { if(currentHotel.value.photos.length > 0) currentHotelPhotoIndex.value = (currentHotelPhotoIndex.value - 1 + currentHotel.value.photos.length) % currentHotel.value.photos.length; };
 
@@ -885,6 +769,31 @@
                 const cancelEditVoucher = () => { newVoucher.value = { title:'', note:'', file:null, fileType:null }; isEditingVoucher.value = false; editingVoucherIndex.value = -1; };
                 const removeVoucher = (i) => { currentTrip.value.vouchers.splice(i, 1); syncUpdate(); };
                 const openFile = (d) => { const w = window.open(); w.document.write('<iframe src="'+d+'" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>'); };
+
+                // Itinerary Recalculation Logic
+                const recalculateTimes = (date) => {
+                    const list = currentTrip.value.itinerary[date];
+                    if(!list || list.length < 2) { syncUpdate(); return; }
+                    
+                    for(let i=1; i<list.length; i++) {
+                        const prev = list[i-1];
+                        const curr = list[i];
+                        if(curr.travelTime) {
+                            const mins = parseInt(curr.travelTime.replace(/\D/g,'')) || 0;
+                            if(mins > 0) {
+                                curr.time = addMinutes(prev.time, mins);
+                            }
+                        }
+                    }
+                    syncUpdate();
+                };
+
+                const openRoute = (prevItem, currItem) => {
+                    if(!prevItem.address || !currItem.address) return alert("Please enter addresses for both locations.");
+                    const modeMap = { car: 'driving', transit: 'transit', walk: 'walking' };
+                    const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(prevItem.address)}&destination=${encodeURIComponent(currItem.address)}&travelmode=${modeMap[currItem.travelMode] || 'driving'}`;
+                    window.open(url, '_blank');
+                };
 
                 // Generic Lists
                 const openGenericList = (type) => { currentListType.value = type; currentView.value = 'generic_list'; };
@@ -903,66 +812,72 @@
                     };
                     return map[currentListType.value] || { titleKey: 'add', placeholderKey: 'enterItem' };
                 });
-                
-                // Requirement 4: Collaborative Sync Check
                 const toggleSubItem = (item, member) => {
                     if (!item.subStatus) item.subStatus = {};
                     item.subStatus[member] = !item.subStatus[member];
-                    
                     const allMembers = currentTrip.value.members || ['Me'];
-                    // Logic: Item is done only if ALL current members have checked it
                     const allTrue = allMembers.every(m => item.subStatus[m] === true);
                     item.done = allTrue;
                     syncUpdate();
                 };
-
                 const openItemModal = (item = null, index = -1) => {
-                    if(item) { 
-                        isEditingItem.value = true; 
-                        editingItemIndex.value = index; 
-                        newItemData.value = { owner: user.value.uid, ...item }; 
-                        
-                        if(['todo','luggage'].includes(currentListType.value)) {
-                            if(!newItemData.value.subStatus) newItemData.value.subStatus = {};
-                        }
-                    } else { 
-                        isEditingItem.value = false; 
-                        editingItemIndex.value = -1; 
-                        let initSub = {};
-                        if(['todo','luggage'].includes(currentListType.value)) {
-                            (currentTrip.value.members || ['Me']).forEach(m => initSub[m] = false);
-                        }
-                        newItemData.value = { text: '', address: '', photo: null, done: false, owner: user.value.uid, subStatus: initSub }; 
-                    }
+                    if(item) { isEditingItem.value = true; editingItemIndex.value = index; newItemData.value = { owner: user.value.uid, ...item }; if(['todo','luggage'].includes(currentListType.value)) { if(!newItemData.value.subStatus) newItemData.value.subStatus = {}; } } else { isEditingItem.value = false; editingItemIndex.value = -1; let initSub = {}; if(['todo','luggage'].includes(currentListType.value)) { (currentTrip.value.members || ['Me']).forEach(m => initSub[m] = false); } newItemData.value = { text: '', address: '', photo: null, done: false, owner: user.value.uid, subStatus: initSub }; }
                     showItemModal.value = true;
                 };
                 const handleItemPhoto = (e) => { const f = e.target.files[0]; if(f) { const r = new FileReader(); r.onload = (ev) => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); const ctx = c.getContext('2d'); const s = 600/i.width; c.width=600; c.height=i.height*s; ctx.drawImage(i,0,0,c.width,c.height); newItemData.value.photo = c.toDataURL('image/jpeg',0.6); }; i.src = ev.target.result; }; r.readAsDataURL(f); } };
-                
-                const saveGenericItem = () => {
-                    if(!newItemData.value.text) return;
-                    const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' };
-                    const key = map[currentListType.value];
-                    if(!currentTrip.value[key]) currentTrip.value[key] = [];
-                    
-                    if(isEditingItem.value) { currentTrip.value[key][editingItemIndex.value] = { ...newItemData.value }; }
-                    else { currentTrip.value[key].push({ ...newItemData.value }); }
-                    
-                    syncUpdate(); showItemModal.value = false;
-                };
-                const removeGenericItem = (i) => { 
-                    const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' };
-                    const key = map[currentListType.value];
-                    currentTrip.value[key].splice(i, 1); syncUpdate();
-                };
+                const saveGenericItem = () => { if(!newItemData.value.text) return; const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' }; const key = map[currentListType.value]; if(!currentTrip.value[key]) currentTrip.value[key] = []; if(isEditingItem.value) { currentTrip.value[key][editingItemIndex.value] = { ...newItemData.value }; } else { currentTrip.value[key].push({ ...newItemData.value }); } syncUpdate(); showItemModal.value = false; };
+                const removeGenericItem = (i) => { const map = { todo: 'tasks', luggage: 'todos', places: 'places', shopping: 'wishlist' }; const key = map[currentListType.value]; currentTrip.value[key].splice(i, 1); syncUpdate(); };
 
                 const formatDate = (s) => s ? s.replace(/-/g, '/') : '';
                 const getDays = (s,e) => { const d1=new Date(s), d2=new Date(e); return isNaN(d1)||isNaN(d2)?0:Math.floor((d2-d1)/86400000)+1; };
                 const copyId = () => navigator.clipboard.writeText(currentTrip.value.id);
                 const tripDates = computed(() => { if(!currentTrip.value.startDate || !currentTrip.value.endDate) return []; const d = []; let c = new Date(currentTrip.value.startDate); const e = new Date(currentTrip.value.endDate); while(c <= e) { d.push(formatDate(c.toISOString().split('T')[0])); c.setDate(c.getDate()+1); } return d; });
                 const getDayItems = () => (currentTrip.value.itinerary && currentTrip.value.itinerary[selectedDate.value]) || [];
-                const saveItem = () => { if(!newItem.value.text)return; if(!currentTrip.value.itinerary[selectedDate.value]) currentTrip.value.itinerary[selectedDate.value]=[]; currentTrip.value.itinerary[selectedDate.value].push({id:Date.now(), ...newItem.value, categoryEmoji: newItem.value.category==='food'?'🍴':(newItem.value.category==='shopping'?'🛍️':'📸'), travelMode:'🚗', isEditingNote:false}); currentTrip.value.itinerary[selectedDate.value].sort((a,b)=>a.time.localeCompare(b.time)); syncUpdate(); newItem.value.text=''; newItem.value.address=''; };
-                const deleteItem = (i) => { currentTrip.value.itinerary[selectedDate.value].splice(i,1); syncUpdate(); };
-                const changeToItinerary = async () => { currentView.value='itinerary'; await nextTick(); new Sortable(document.getElementById('sortable-list'), { animation:150, ghostClass:'sortable-ghost', handle:'.group', onEnd:(e)=>{ const l = currentTrip.value.itinerary[selectedDate.value]; l.splice(e.newIndex, 0, l.splice(e.oldIndex, 1)[0]); syncUpdate(); }}); };
+                
+                const saveItem = () => { 
+                    if(!newItem.value.text)return; 
+                    if(!currentTrip.value.itinerary[selectedDate.value]) currentTrip.value.itinerary[selectedDate.value]=[]; 
+                    // Auto-calc time based on previous item if it exists
+                    const list = currentTrip.value.itinerary[selectedDate.value];
+                    let calcTime = newItem.value.time;
+                    if(list.length > 0) {
+                        const lastItem = list[list.length-1];
+                        // If last item has travel time, use it, else default to +60m or user input
+                        // For simplicity, we just use user input or default
+                    }
+
+                    currentTrip.value.itinerary[selectedDate.value].push({
+                        id:Date.now(), ...newItem.value, 
+                        categoryEmoji: newItem.value.category==='food'?'🍴':(newItem.value.category==='shopping'?'🛍️':'📸'), 
+                        travelMode:'car', isEditingNote:false
+                    }); 
+                    
+                    // Not sorting here to allow "next item" logic to work naturally by append, 
+                    // or sort by time if user manually entered a time. 
+                    // Let's stick to time sort to be safe
+                    currentTrip.value.itinerary[selectedDate.value].sort((a,b)=>a.time.localeCompare(b.time)); 
+                    
+                    syncUpdate(); 
+                    newItem.value.text=''; newItem.value.address=''; 
+                };
+                
+                const deleteItem = (i) => { currentTrip.value.itinerary[selectedDate.value].splice(i,1); recalculateTimes(selectedDate.value); };
+                
+                const changeToItinerary = async () => { 
+                    currentView.value='itinerary'; 
+                    await nextTick(); 
+                    new Sortable(document.getElementById('sortable-list'), { 
+                        animation:150, 
+                        ghostClass:'sortable-ghost', 
+                        handle:'.group', 
+                        onEnd:(e)=>{ 
+                            const l = currentTrip.value.itinerary[selectedDate.value]; 
+                            l.splice(e.newIndex, 0, l.splice(e.oldIndex, 1)[0]); 
+                            recalculateTimes(selectedDate.value); // Auto recalc on drag
+                        }
+                    }); 
+                };
+
                 const totalExpense = computed(() => (currentTrip.value.expenses||[]).reduce((a,b)=>a+b.twd,0));
                 const groupedTotals = computed(() => { const g={}; (currentTrip.value.expenses||[]).forEach(e=>{ if(e.currency && e.currency!=='TWD') g[e.currency]=(g[e.currency]||0)+parseFloat(e.original); }); return g; });
                 const handleCalc = (b) => { if(b==='C')calcInput.value=''; else if(b==='DEL')calcInput.value=calcInput.value.slice(0,-1); else calcInput.value+=b; };
@@ -989,7 +904,7 @@
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt)}`),
-                    setTheme, currentTheme, userName, saveUserName, getDisplayName, showTranslationModal, syncUpdate
+                    setTheme, currentTheme, userName, saveUserName, getDisplayName, showTranslationModal, syncUpdate, recalculateTimes, openRoute
                 };
             }
         }).mount('#app');
