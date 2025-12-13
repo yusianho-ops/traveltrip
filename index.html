@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Trip Planner v4.7 (Auto Time & Routing)</title>
+    <title>Trip Planner v4.8 (Edit & Notes)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -121,7 +121,7 @@
         <div v-if="!user" class="flex flex-col items-center justify-center h-full p-8 text-center relative bg-white">
             <i class="fa-solid fa-earth-americas text-6xl mb-6 text-accent animate-bounce"></i>
             <h1 class="text-3xl font-black mb-2 text-text-main">TRIP PLANNER</h1>
-            <p class="mb-8 text-sm font-bold opacity-60">Version 4.7</p>
+            <p class="mb-8 text-sm font-bold opacity-60">Version 4.8</p>
             <button @click="login" class="w-full bg-white border-2 border-gray-200 py-4 rounded-2xl font-black shadow-lg active:scale-95 flex items-center justify-center gap-2 text-text-main">
                 <i v-if="firebaseStatus === 'ready'" class="fa-solid fa-rocket text-xl text-accent"></i>
                 <i v-else class="fa-solid fa-spinner fa-spin text-xl"></i>
@@ -226,6 +226,8 @@
                         </div>
                         <input v-model="newItem.text" :placeholder="t('enterItem')" class="mb-2 bg-gray-50 border-none rounded-xl">
                         <input v-model="newItem.address" :placeholder="t('address')" class="mb-2 bg-gray-50 border-none rounded-xl text-sm">
+                        <!-- New Note field for adding -->
+                        <textarea v-model="newItem.note" :placeholder="t('note')" class="mb-2 bg-gray-50 border-none rounded-xl text-sm h-12 resize-none"></textarea>
                         
                         <button @click="saveItem" class="w-full py-3 bg-accent text-white rounded-xl shadow-lg active:scale-95 text-xl font-bold flex items-center justify-center"><i class="fa-solid fa-plus"></i></button>
                     </div>
@@ -233,31 +235,47 @@
                     <div id="sortable-list" class="space-y-0 min-h-[50px]">
                          <div v-for="(item, index) in getDayItems()" :key="item.id" class="group relative">
                             
-                            <!-- Transport Between Items with Route Button -->
+                            <!-- Transport Between Items -->
                             <div v-if="index > 0" class="flex justify-center items-center py-2 relative z-0">
                                 <div class="h-8 w-0.5 bg-gray-300 absolute top-0 bottom-0 left-1/2 -translate-x-1/2 -z-10"></div>
                                 <div class="bg-white border border-gray-200 rounded-full pl-3 pr-1 py-1 flex items-center gap-2 shadow-sm">
-                                    <select v-model="item.travelMode" @change="recalculateTimes(selectedDate)" class="text-xs font-bold bg-transparent border-none p-0 w-auto !py-0 !pl-0">
-                                        <option value="car">🚗 Car</option>
-                                        <option value="transit">🚆 Transit</option>
-                                        <option value="walk">🚶 Walk</option>
+                                    <select v-model="item.travelMode" @change="recalculateTimes(selectedDate)" class="text-xs font-bold bg-transparent border-none p-0 w-auto !py-0 !pl-0 cursor-pointer">
+                                        <option value="car">🚗 {{ t('car') }}</option>
+                                        <option value="transit">🚆 {{ t('transit') }}</option>
+                                        <option value="walk">🚶 {{ t('walk') }}</option>
                                     </select>
-                                    <input v-model="item.travelTime" @change="recalculateTimes(selectedDate)" placeholder="15m" class="text-xs font-bold w-10 text-center bg-transparent border-b border-gray-300 p-0 !pl-0 !pr-0 rounded-none focus:border-accent">
+                                    
+                                    <!-- Scrolling Time Selectors -->
+                                    <div class="flex items-center gap-0.5 bg-gray-50 rounded px-1">
+                                        <select v-model="item.travelHours" @change="recalculateTimes(selectedDate)" class="text-xs font-bold bg-transparent border-none p-0 !pr-0 w-auto">
+                                            <option value="0">0{{t('hour')}}</option>
+                                            <option v-for="h in 12" :key="h" :value="h">{{h}}{{t('hour')}}</option>
+                                        </select>
+                                        <select v-model="item.travelMins" @change="recalculateTimes(selectedDate)" class="text-xs font-bold bg-transparent border-none p-0 !pr-0 w-auto">
+                                            <option value="0">0{{t('minute')}}</option>
+                                            <option v-for="m in [5,10,15,20,25,30,35,40,45,50,55]" :key="m" :value="m">{{m}}{{t('minute')}}</option>
+                                        </select>
+                                    </div>
+
                                     <button @click="openRoute(getDayItems()[index-1], item)" class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-[10px]"><i class="fa-solid fa-diamond-turn-right"></i></button>
                                 </div>
                             </div>
 
                             <!-- Item Card -->
-                            <div class="bg-white p-4 rounded-2xl shadow-soft flex items-center gap-4 active:scale-[0.99] transition-transform border-l-4 border-accent z-10 relative">
-                                <div class="flex flex-col items-center justify-center w-12 border-r border-gray-100 pr-2">
+                            <div class="bg-white p-4 rounded-2xl shadow-soft flex items-start gap-4 active:scale-[0.99] transition-transform border-l-4 border-accent z-10 relative">
+                                <div class="flex flex-col items-center justify-center w-12 border-r border-gray-100 pr-2 pt-1">
                                     <span class="text-xs font-black text-gray-400">{{ item.time }}</span>
                                 </div>
-                                <div class="text-2xl">{{ item.categoryEmoji }}</div>
+                                <div class="text-2xl pt-1">{{ item.categoryEmoji }}</div>
                                 <div class="flex-1 overflow-hidden">
                                     <div class="font-bold text-text-main text-lg leading-tight truncate">{{ item.text }}</div>
+                                    <div v-if="item.note" class="text-xs text-gray-500 mt-1 break-words bg-gray-50 p-1.5 rounded">{{ item.note }}</div>
                                     <div v-if="item.address" @click.stop="openMap(item.address)" class="text-[10px] font-bold text-blue-400 mt-1 truncate cursor-pointer underline"><i class="fa-solid fa-location-dot"></i> {{ item.address }}</div>
                                 </div>
-                                <button @click="deleteItem(index)" class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash text-sm"></i></button>
+                                <div class="flex flex-col gap-2">
+                                    <button @click="openEditItem(item)" class="w-8 h-8 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center active:scale-90"><i class="fa-solid fa-pen text-xs"></i></button>
+                                    <button @click="deleteItem(index)" class="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash text-xs"></i></button>
+                                </div>
                             </div>
                          </div>
                     </div>
@@ -395,6 +413,79 @@
                 </div>
             </div>
 
+            <!-- VIEW: FLIGHTS -->
+            <div v-if="currentView === 'flights'" class="flex flex-col h-screen bg-main-bg">
+                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
+                    <button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h2 class="font-black text-xl text-text-main">{{ t('flights') }}</h2>
+                    <button @click="showAddFlightModal=true" class="w-10 h-10 flex items-center justify-center text-accent active:scale-90"><i class="fa-solid fa-plus text-xl"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+                    <div v-if="!currentTrip.flights || currentTrip.flights.length === 0" class="text-center text-gray-400 font-bold mt-10 opacity-50">{{ t('noFlights') }}</div>
+                    
+                    <div v-for="(f, i) in (currentTrip.flights||[])" :key="i" @click="openFlightDetail(f, i)" class="bg-white rounded-3xl overflow-hidden shadow-soft cursor-pointer active:scale-[0.99] transition-transform relative border border-gray-100">
+                        <div class="bg-accent-light/30 p-4 border-b border-gray-100 flex justify-between items-center">
+                            <span class="font-bold text-gray-500 text-xs tracking-widest uppercase">{{ f.airline || t('airline') }}</span>
+                            <span class="bg-white/50 w-8 h-8 rounded-full flex items-center justify-center text-accent"><i class="fa-solid fa-pen text-xs"></i></span>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-center mb-6">
+                                <div class="text-5xl font-black text-text-main tracking-tight">{{ f.code || 'FLT' }}</div>
+                            </div>
+                            <div class="flex justify-between items-center mb-6 px-2">
+                                <div class="text-center">
+                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.origin || 'DEP' }}</div>
+                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.time || '--:--' }}</div>
+                                    <div class="mt-1 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full inline-block">{{ f.originCity || t('originCity') }}</div>
+                                </div>
+                                <div class="flex-1 flex flex-col items-center justify-center px-4 relative -top-3 space-y-2">
+                                    <div class="text-[10px] text-gray-400 font-bold">{{ t('direct') }}</div>
+                                    <div class="w-full h-0.5 bg-gray-200 relative"><i class="fa-solid fa-plane text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg"></i></div>
+                                    <div class="text-[10px] text-gray-400 font-bold">{{ formatDate(f.date) }}</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-black text-text-main uppercase">{{ f.dest || 'ARR' }}</div>
+                                    <div class="text-xl font-bold text-text-main mt-1">{{ f.arrTime || '--:--' }}</div>
+                                    <div class="mt-1 px-2 py-0.5 bg-orange-400 text-white text-[10px] font-bold rounded-full inline-block">{{ f.destCity || t('destCity') }}</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 border-t border-dashed border-gray-200 pt-4">
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('baggage') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-suitcase text-sm text-accent"></i> {{ f.baggage || '-' }}</div></div>
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('aircraft') }}</div><div class="font-black text-lg text-text-main flex items-center gap-2"><i class="fa-solid fa-plane text-sm text-accent"></i> {{ f.aircraft || '-' }}</div></div>
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('price') }}</div><div class="font-black text-lg text-text-main">NT${{ f.cost || '-' }}</div></div>
+                                <div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ t('date') }}</div><div class="font-black text-lg text-text-main">{{ formatDate(f.date) }}</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: BUDGET -->
+            <div v-if="currentView === 'budget_detail'" class="flex flex-col h-screen bg-main-bg">
+                <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('budget') }}</h2><div class="w-10"></div></div>
+                <div class="p-4 overflow-y-auto pb-24 space-y-4">
+                    <div class="bg-text-main text-white p-6 rounded-3xl shadow-lg text-center">
+                        <p class="text-xs font-bold opacity-70 mb-1">{{ t('totalExpense') }} (TWD)</p>
+                        <p class="text-4xl font-black mb-2">NT$ {{ totalExpense }}</p>
+                        <div v-if="Object.keys(groupedTotals).length > 0" class="border-t border-white/20 pt-2 flex flex-wrap justify-center gap-2">
+                            <span v-for="(amount, curr) in groupedTotals" :key="curr" class="text-xs font-bold bg-white/20 px-2 py-1 rounded">{{ curr }} Total: {{ amount }}</span>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-soft">
+                        <h3 class="font-bold text-sm mb-3 text-gray-400">{{ t('members') }}</h3>
+                        <div class="flex gap-2 mb-3"><input v-model="newMemberName" :placeholder="t('name')" class="flex-1 bg-gray-50 border-none text-sm"><button @click="addMember" class="bg-gray-200 w-10 rounded-xl font-bold">+</button></div>
+                        <div class="flex flex-wrap gap-2"><span v-for="(m, i) in (currentTrip.members || ['Me'])" :key="i" class="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold flex items-center gap-2">{{ getDisplayName(m) }} <button @click="removeMember(i)" v-if="m !== 'Me'" class="text-red-400">x</button></span></div>
+                    </div>
+                    <div class="space-y-3">
+                        <h3 class="font-bold text-sm text-gray-400 px-1">{{ t('history') }}</h3>
+                        <div v-for="(exp, i) in (currentTrip.expenses || []).slice().reverse()" :key="i" class="bg-white p-4 rounded-2xl flex justify-between items-center shadow-soft">
+                            <div><span class="font-bold block text-text-main">{{ exp.note }}</span><span class="text-xs text-gray-400 block mt-0.5">{{ getDisplayName(exp.payer) }} {{ t('paidFor') }} {{ (exp.splitters||[]).map(s=>getDisplayName(s)).join(', ') }}</span><span v-if="exp.currency && exp.currency !== 'TWD'" class="text-xs font-bold text-accent bg-accent-light px-1 rounded">{{ exp.original }} {{ exp.currency }}</span></div>
+                            <div class="text-right"><span class="font-black block text-text-main">NT$ {{ exp.twd }}</span><button @click="deleteExpense(i)" class="text-red-300 text-xs mt-1"><i class="fa-solid fa-trash"></i></button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIEW: VOUCHERS -->
             <div v-if="currentView === 'vouchers'" class="flex flex-col h-screen bg-main-bg">
                 <div class="p-4 flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm"><button @click="currentView = 'dashboard'" class="w-10 h-10 flex items-center justify-center text-text-main"><i class="fa-solid fa-arrow-left"></i></button><h2 class="font-black text-xl text-text-main">{{ t('vouchers') }}</h2><div class="w-10"></div></div>
@@ -480,7 +571,7 @@
                 </div>
             </div>
             
-            <!-- MODAL: ADD/EDIT GENERIC ITEM (Notes with Member Selector) -->
+            <!-- MODAL: ADD/EDIT GENERIC ITEM -->
             <div v-if="showItemModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
                 <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4">
                     <h2 class="text-xl font-black text-center text-text-main">{{ isEditingItem ? t('editItem') : t(itemModalConfig.titleKey) }}</h2>
@@ -510,15 +601,37 @@
                 </div>
             </div>
 
+            <!-- MODAL: EDIT ITINERARY ITEM (NEW) -->
+            <div v-if="showEditItemModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
+                <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-4">
+                    <h2 class="text-xl font-black text-center text-text-main">{{ t('editItem') }}</h2>
+                    <div class="flex gap-2 mb-2">
+                        <input type="time" v-model="editItemData.time" class="flex-1 bg-gray-50 border-none text-center font-bold text-gray-600 rounded-xl">
+                        <select v-model="editItemData.category" class="flex-1 bg-gray-50 border-none font-bold text-gray-600 rounded-xl px-2">
+                            <option value="sightseeing">📸 {{ t('sightseeing') }}</option>
+                            <option value="food">🍴 {{ t('food') }}</option>
+                            <option value="shopping">🛍️ {{ t('shopping') }}</option>
+                            <option value="accommodation">🏨 {{ t('hotelDetail') }}</option>
+                        </select>
+                    </div>
+                    <input v-model="editItemData.text" :placeholder="t('enterItem')" class="mb-2 bg-gray-50 border-none rounded-xl">
+                    <input v-model="editItemData.address" :placeholder="t('address')" class="mb-2 bg-gray-50 border-none rounded-xl text-sm">
+                    <textarea v-model="editItemData.note" :placeholder="t('note')" class="mb-2 bg-gray-50 border-none rounded-xl text-sm h-20 resize-none"></textarea>
+                    
+                    <div class="flex gap-2 pt-2">
+                        <button @click="showEditItemModal = false" class="flex-1 py-3 font-bold bg-gray-100 rounded-xl text-gray-500">{{ t('cancel') }}</button>
+                        <button @click="saveEditItem" class="flex-1 py-3 font-bold bg-accent text-white rounded-xl shadow-lg">{{ t('save') }}</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- SETTINGS: THEMES & LANGUAGE -->
             <div v-if="showSettings" class="fixed inset-0 bg-white z-50 p-6 flex flex-col">
                 <div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-black text-text-main">{{ t('settings') }}</h2><button @click="showSettings = false" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold">✕</button></div>
-                
                 <div class="mb-8">
                     <label class="block font-bold mb-3 text-gray-400 text-sm tracking-wider">{{ t('userName') }}</label>
                     <input v-model="userName" @change="saveUserName" placeholder="Your Name" class="bg-gray-50 border-none text-lg font-bold">
                 </div>
-
                 <div class="mb-8">
                     <label class="block font-bold mb-3 text-gray-400 text-sm tracking-wider">{{ t('theme') }}</label>
                     <div class="grid grid-cols-5 gap-2">
@@ -603,8 +716,8 @@
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
         const i18n = {
-            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入名稱...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅', translation:'翻譯', chooseApp:'選擇翻譯工具', hotelDetail:'住宿詳情', noPhotos:'尚無照片', cost:'費用', orderId:'訂單編號', deleteHotel:'刪除住宿' },
-            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', notes:'NOTES', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split', todo:'To-Do', luggage:'Luggage', places:'Places', emptyList:'Empty List', addTask:'Add Task', addLuggage:'Add Item', addPlace:'Add Place', addShopping:'Add Item', addPhoto:'Add Photo', address:'Address', editItem:'Edit Item', theme:'THEME', language:'LANGUAGE', userName:'USER NAME', classic:'Classic', postcard:'Postcard', dune:'Dune', seafoam:'Seafoam', saffron:'Saffron', translation:'Translate', chooseApp:'Choose App', hotelDetail:'Hotel Detail', noPhotos:'No Photos', cost:'Cost', orderId:'Order ID', deleteHotel:'Delete Hotel' }
+            'zh-TW': { trips:'我的行程', newTrip:'新增行程', v:'憑證票券', settings:'設定', save:'儲存', cancel:'取消', destination:'目的地', weather:'當地天氣', itinerary:'每日行程', budget:'記帳', flights:'航班', hotels:'住宿', notes:'雜記', vouchers:'票券及憑證', packing:'行前準備', enterId:'輸入行程 ID 加入', noTrips:'目前沒有行程', enterItem:'輸入名稱...', paidFor:'幫付', totalExpense:'總支出', members:'成員', history:'歷史紀錄', note:'備註', sightseeing:'景點', food:'吃飯', shopping:'購物', name:'姓名', update:'更新', add:'新增', flightNo:'航班代號', airline:'航空公司', addFlight:'新增航班', hotelName:'飯店名稱', hotelAddr:'地址', addHotel:'新增住宿', voucherTitle:'標題 (如: 迪士尼門票)', voucherNote:'備註 / 訂單編號', oneTicket:'同一張訂單', bagagge:'行李', aircraft:'機型', price:'價格', direct:'直飛', date:'日期', editFlightDetails:'編輯航班資訊', done:'完成', originCode:'出發代號', destCode:'抵達代號', originCity:'出發城市', destCity:'抵達城市', depTime:'起飛時間', arrTime:'抵達時間', baggage:'行李', totalCost:'總費用', deleteFlight:'刪除航班', noFlights:'尚未新增航班', editNote:'編輯筆記', fileReady:'檔案就緒', viewImg:'查看圖片', openPdf:'開啟 PDF', payer:'付款人', split:'分帳', todo:'待辦', luggage:'行李', places:'想去', emptyList:'目前沒有項目', addTask:'新增待辦', addLuggage:'新增行李物品', addPlace:'新增想去地點', addShopping:'新增必買物品', addPhoto:'新增照片', address:'地址', editItem:'編輯項目', theme:'介面風格', language:'語言', userName:'使用者名稱', classic:'經典紫', postcard:'復古米', dune:'沙丘暖橘', seafoam:'海沫藍綠', saffron:'番紅花紅', translation:'翻譯', chooseApp:'選擇翻譯工具', hotelDetail:'住宿詳情', noPhotos:'尚無照片', cost:'費用', orderId:'訂單編號', deleteHotel:'刪除住宿', car:'開車', transit:'大眾運輸', walk:'走路', hour:'時', minute:'分' },
+            'en': { trips:'MY TRIPS', newTrip:'NEW TRIP', v:'VOUCHERS', settings:'SETTINGS', save:'SAVE', cancel:'CANCEL', destination:'Destination', weather:'WEATHER', itinerary:'ITINERARY', budget:'BUDGET', flights:'FLIGHTS', hotels:'HOTELS', notes:'NOTES', vouchers:'TICKETS', packing:'PACKING', enterId:'Enter Trip ID', noTrips:'No trips.', enterItem:'Enter item...', paidFor:'paid for', totalExpense:'Total', members:'Members', history:'History', note:'Note', sightseeing:'Sightseeing', food:'Food', shopping:'Shopping', name:'Name', update:'UPDATE', add:'ADD', flightNo:'Flight No.', airline:'Airline', addFlight:'ADD FLIGHT', hotelName:'Hotel Name', hotelAddr:'Address', addHotel:'ADD HOTEL', voucherTitle:'Title', voucherNote:'Note / Order ID', oneTicket:'One Ticket', bagagge:'Baggage', aircraft:'Aircraft', price:'Price', direct:'Direct', date:'Date', editFlightDetails:'Edit Flight', done:'DONE', originCode:'Origin Code', destCode:'Dest Code', originCity:'Origin City', destCity:'Dest City', depTime:'Dep Time', arrTime:'Arr Time', baggage:'Baggage', totalCost:'Total Cost', deleteFlight:'Delete Flight', noFlights:'No flights added', editNote:'Edit Note', fileReady:'File Ready', viewImg:'View Image', openPdf:'Open PDF', payer:'Payer', split:'Split', todo:'To-Do', luggage:'Luggage', places:'Places', emptyList:'Empty List', addTask:'Add Task', addLuggage:'Add Item', addPlace:'Add Place', addShopping:'Add Item', addPhoto:'Add Photo', address:'Address', editItem:'Edit Item', theme:'THEME', language:'LANGUAGE', userName:'USER NAME', classic:'Classic', postcard:'Postcard', dune:'Dune', seafoam:'Seafoam', saffron:'Saffron', translation:'Translate', chooseApp:'Choose App', hotelDetail:'Hotel Detail', noPhotos:'No Photos', cost:'Cost', orderId:'Order ID', deleteHotel:'Delete Hotel', car:'Car', transit:'Transit', walk:'Walk', hour:'h', minute:'m' }
         };
         const langNames = { 'zh-TW':'繁體中文', 'en':'English' };
         const themeConfig = { classic: { bg: '#F5F5F7', accent: '#6366f1', light: '#E0E7FF' }, postcard: { bg: '#F3EFE0', accent: '#D4A373', light: '#FaEFE0' }, dune: { bg: '#FFF0E5', accent: '#E49F68', light: '#FFF5EB' }, seafoam: { bg: '#E0F7FA', accent: '#4DD0E1', light: '#E0F2F1' }, saffron: { bg: '#FFF3E0', accent: '#FF9800', light: '#FFF8E1' } };
@@ -628,6 +741,7 @@
                 const isModalOpen = ref(false); const showSettings = ref(false);
                 const showCalculator = ref(false); const showHotelModal = ref(false);
                 const showTranslationModal = ref(false);
+                const showEditItemModal = ref(false);
                 const selectedDate = ref(''); const joinTripId = ref(''); 
                 const firebaseStatus = ref('connecting'); const errorMessage = ref('');
                 const loginBtnText = computed(() => firebaseStatus.value === 'connecting' ? 'Connecting...' : 'START');
@@ -636,7 +750,8 @@
                 const userName = ref('Me'); 
 
                 const form = ref({ destination: '', startDate: '', endDate: '' });
-                const newItem = ref({ time: '10:00', text: '', category: 'sightseeing', address: '' });
+                const newItem = ref({ time: '10:00', text: '', category: 'sightseeing', address: '', note: '' });
+                const editItemData = ref({});
                 
                 // Flight States
                 const showAddFlightModal = ref(false);
@@ -770,7 +885,7 @@
                 const removeVoucher = (i) => { currentTrip.value.vouchers.splice(i, 1); syncUpdate(); };
                 const openFile = (d) => { const w = window.open(); w.document.write('<iframe src="'+d+'" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>'); };
 
-                // Itinerary Recalculation Logic
+                // Itinerary Recalculation & Editing
                 const recalculateTimes = (date) => {
                     const list = currentTrip.value.itinerary[date];
                     if(!list || list.length < 2) { syncUpdate(); return; }
@@ -778,11 +893,12 @@
                     for(let i=1; i<list.length; i++) {
                         const prev = list[i-1];
                         const curr = list[i];
-                        if(curr.travelTime) {
-                            const mins = parseInt(curr.travelTime.replace(/\D/g,'')) || 0;
-                            if(mins > 0) {
-                                curr.time = addMinutes(prev.time, mins);
-                            }
+                        const h = parseInt(curr.travelHours || 0);
+                        const m = parseInt(curr.travelMins || 0);
+                        const totalMins = (h * 60) + m;
+                        
+                        if(totalMins > 0) {
+                            curr.time = addMinutes(prev.time, totalMins);
                         }
                     }
                     syncUpdate();
@@ -793,6 +909,28 @@
                     const modeMap = { car: 'driving', transit: 'transit', walk: 'walking' };
                     const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(prevItem.address)}&destination=${encodeURIComponent(currItem.address)}&travelmode=${modeMap[currItem.travelMode] || 'driving'}`;
                     window.open(url, '_blank');
+                };
+
+                // Edit Item Logic
+                const openEditItem = (item) => {
+                    editItemData.value = { ...item }; // Copy data
+                    showEditItemModal.value = true;
+                };
+
+                const saveEditItem = () => {
+                    const list = currentTrip.value.itinerary[selectedDate.value];
+                    const index = list.findIndex(i => i.id === editItemData.value.id);
+                    if (index > -1) {
+                        // Update Emoji based on new category
+                        const cat = editItemData.value.category;
+                        editItemData.value.categoryEmoji = cat==='food'?'🍴':(cat==='shopping'?'🛍️':(cat==='accommodation'?'🏨':'📸'));
+                        list[index] = { ...editItemData.value };
+                        
+                        // Resort if time changed and recalculate
+                        list.sort((a,b)=>a.time.localeCompare(b.time));
+                        recalculateTimes(selectedDate.value);
+                    }
+                    showEditItemModal.value = false;
                 };
 
                 // Generic Lists
@@ -837,28 +975,17 @@
                 const saveItem = () => { 
                     if(!newItem.value.text)return; 
                     if(!currentTrip.value.itinerary[selectedDate.value]) currentTrip.value.itinerary[selectedDate.value]=[]; 
-                    // Auto-calc time based on previous item if it exists
-                    const list = currentTrip.value.itinerary[selectedDate.value];
-                    let calcTime = newItem.value.time;
-                    if(list.length > 0) {
-                        const lastItem = list[list.length-1];
-                        // If last item has travel time, use it, else default to +60m or user input
-                        // For simplicity, we just use user input or default
-                    }
-
+                    
                     currentTrip.value.itinerary[selectedDate.value].push({
                         id:Date.now(), ...newItem.value, 
                         categoryEmoji: newItem.value.category==='food'?'🍴':(newItem.value.category==='shopping'?'🛍️':'📸'), 
-                        travelMode:'car', isEditingNote:false
+                        travelMode:'car', travelHours:0, travelMins:0
                     }); 
                     
-                    // Not sorting here to allow "next item" logic to work naturally by append, 
-                    // or sort by time if user manually entered a time. 
-                    // Let's stick to time sort to be safe
                     currentTrip.value.itinerary[selectedDate.value].sort((a,b)=>a.time.localeCompare(b.time)); 
                     
                     syncUpdate(); 
-                    newItem.value.text=''; newItem.value.address=''; 
+                    newItem.value.text=''; newItem.value.address=''; newItem.value.note='';
                 };
                 
                 const deleteItem = (i) => { currentTrip.value.itinerary[selectedDate.value].splice(i,1); recalculateTimes(selectedDate.value); };
@@ -873,7 +1000,7 @@
                         onEnd:(e)=>{ 
                             const l = currentTrip.value.itinerary[selectedDate.value]; 
                             l.splice(e.newIndex, 0, l.splice(e.oldIndex, 1)[0]); 
-                            recalculateTimes(selectedDate.value); // Auto recalc on drag
+                            recalculateTimes(selectedDate.value); 
                         }
                     }); 
                 };
@@ -904,7 +1031,8 @@
                     currentListType, openGenericList, getGenericList, itemModalConfig, showItemModal, openItemModal, handleItemPhoto, newItemData, isEditingItem, saveGenericItem, removeGenericItem, toggleSubItem,
                     openTool: (t) => currentView.value = (t==='budget'?'budget_detail':(t==='packing'?'packing_list':t)), 
                     dragBtn, startDrag, onDrag, endDrag, handleClickCalc, openMap: (txt) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(txt)}`),
-                    setTheme, currentTheme, userName, saveUserName, getDisplayName, showTranslationModal, syncUpdate, recalculateTimes, openRoute
+                    setTheme, currentTheme, userName, saveUserName, getDisplayName, showTranslationModal, syncUpdate, recalculateTimes, openRoute, 
+                    showEditItemModal, openEditItem, saveEditItem, editItemData
                 };
             }
         }).mount('#app');
